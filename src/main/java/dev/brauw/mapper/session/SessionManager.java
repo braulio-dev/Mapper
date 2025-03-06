@@ -1,12 +1,15 @@
 package dev.brauw.mapper.session;
 
+import dev.brauw.mapper.MapperPlugin;
+import dev.brauw.mapper.region.Region;
+import dev.brauw.mapper.session.display.CuboidStrategy;
+import dev.brauw.mapper.session.display.ItemStrategy;
+import dev.brauw.mapper.session.display.PolygonStrategy;
+import dev.brauw.mapper.session.display.RegionDisplayStrategy;
 import lombok.CustomLog;
 import org.bukkit.entity.Player;
 
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -14,14 +17,17 @@ import java.util.concurrent.TimeUnit;
  */
 @CustomLog
 public class SessionManager {
-    private final Map<UUID, EditSession> playerSessions = new HashMap<>();
+
+    private final EnumMap<Region.RegionType, RegionDisplayStrategy<?>> displayStrategies;
+    private final Map<UUID, EditSession> playerSessions;
     private final long sessionTimeoutMillis;
+    private final MapperPlugin plugin;
     
     /**
      * Creates a new SessionManager with the default timeout.
      */
-    public SessionManager() {
-        this(TimeUnit.HOURS.toMillis(1)); // Default 1 hour timeout
+    public SessionManager(MapperPlugin plugin) {
+        this(TimeUnit.HOURS.toMillis(1), plugin); // Default 1 hour timeout
     }
     
     /**
@@ -29,13 +35,38 @@ public class SessionManager {
      *
      * @param sessionTimeoutMillis timeout in milliseconds for inactive sessions
      */
-    public SessionManager(long sessionTimeoutMillis) {
+    public SessionManager(long sessionTimeoutMillis, MapperPlugin plugin) {
         this.sessionTimeoutMillis = sessionTimeoutMillis;
-        log.info("Session manager initialized with " + 
-                 TimeUnit.MILLISECONDS.toMinutes(sessionTimeoutMillis) + 
-                 " minute timeout");
+        this.plugin = plugin;
+        this.playerSessions = new HashMap<>();
+        this.displayStrategies = new EnumMap<>(Region.RegionType.class);
+        createDisplayStrategies();
+        log.info("Session manager initialized with " +
+                TimeUnit.MILLISECONDS.toMinutes(sessionTimeoutMillis) +
+                " minute timeout");
     }
-    
+
+    private void createDisplayStrategies() {
+        final ItemStrategy itemStrategy = new ItemStrategy(plugin);
+        final CuboidStrategy cuboidStrategy = new CuboidStrategy(plugin);
+        final PolygonStrategy polygonStrategy = new PolygonStrategy(cuboidStrategy);
+        this.displayStrategies.put(Region.RegionType.POLYGON, polygonStrategy);
+        this.displayStrategies.put(Region.RegionType.CUBOID, cuboidStrategy);
+        this.displayStrategies.put(Region.RegionType.POINT, itemStrategy);
+        this.displayStrategies.put(Region.RegionType.PERSPECTIVE, itemStrategy);
+    }
+
+    /**
+     * Gets the display strategy for the specified region type.
+     *
+     * @param region the region to get the display strategy for
+     * @return the display strategy for the region type
+     */
+    public <T extends Region> RegionDisplayStrategy<T> getDisplayStrategy(T region) {
+        //noinspection unchecked
+        return (RegionDisplayStrategy<T>) displayStrategies.get(region.getType());
+    }
+
     /**
      * Gets or creates an edit session for the specified player.
      *

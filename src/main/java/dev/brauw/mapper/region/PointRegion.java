@@ -6,19 +6,24 @@ import lombok.Setter;
 import org.bukkit.Location;
 import java.util.UUID;
 
+@Getter
 @CustomLog
 public class PointRegion implements Region {
-    @Getter
     private final UUID id;
-    @Getter @Setter
+    @Setter
     private String name;
-    @Getter
     private final Location location;
+    private final RegionOptions options;
     
-    public PointRegion(String name, Location location) {
+    public PointRegion(String name, Location location, RegionOptions options) {
+        this.options = options;
         this.id = UUID.randomUUID();
         this.name = name;
         this.location = location;
+    }
+
+    public PointRegion(String name, Location location) {
+        this(name, location, RegionOptions.builder().build());
     }
     
     @Override

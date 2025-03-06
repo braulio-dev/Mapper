@@ -14,8 +14,10 @@ public class CuboidRegion implements Region {
     private String name;
     private final Location min;
     private final Location max;
+    private final RegionOptions options;
     
-    public CuboidRegion(String name, Location pos1, Location pos2) {
+    public CuboidRegion(String name, Location pos1, Location pos2, RegionOptions options) {
+        this.options = options;
         this.id = UUID.randomUUID();
         this.name = name;
         
@@ -29,6 +31,10 @@ public class CuboidRegion implements Region {
         
         this.min = new Location(pos1.getWorld(), minX, minY, minZ);
         this.max = new Location(pos1.getWorld(), maxX, maxY, maxZ);
+    }
+
+    public CuboidRegion(String name, Location pos1, Location pos2) {
+        this(name, pos1, pos2, RegionOptions.builder().build());
     }
     
     @Override

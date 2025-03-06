@@ -9,10 +9,14 @@ public class PerspectiveRegion extends PointRegion {
     private final float yaw;
     private final float pitch;
 
-    public PerspectiveRegion(String name, Location location) {
-        super(name, location);
+    public PerspectiveRegion(String name, Location location, RegionOptions options) {
+        super(name, location, options);
         this.yaw = location.getYaw();
         this.pitch = location.getPitch();
+    }
+
+    public PerspectiveRegion(String name, Location location) {
+        this(name, location, RegionOptions.builder().build());
     }
 
     @Override

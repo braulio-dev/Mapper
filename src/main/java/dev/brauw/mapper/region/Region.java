@@ -7,6 +7,13 @@ import java.util.UUID;
  * Interface representing a region in the game world.
  */
 public interface Region {
+
+    /**
+     * Gets the options of the region.
+     * @return the options of the region
+     */
+    RegionOptions getOptions();
+
     /**
      * Gets the unique identifier of the region.
      *
