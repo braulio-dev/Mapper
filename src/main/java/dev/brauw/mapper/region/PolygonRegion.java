@@ -1,8 +1,10 @@
 package dev.brauw.mapper.region;
 
+import com.google.common.base.Preconditions;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
+import org.bukkit.World;
 
 import java.util.Collections;
 import java.util.List;
@@ -21,6 +23,11 @@ public class PolygonRegion implements Region {
         this.name = name;
         this.id = UUID.randomUUID();
         this.options = options;
+
+        // make sure they're all in the same world
+        Preconditions.checkArgument(!children.isEmpty());
+        final World world = children.getFirst().getWorld();
+        Preconditions.checkArgument(children.stream().allMatch(region -> region.getWorld().equals(world)));
         this.children = Collections.unmodifiableList(children);
     }
 
@@ -36,5 +43,10 @@ public class PolygonRegion implements Region {
     @Override
     public RegionType getType() {
         return RegionType.POLYGON;
+    }
+
+    @Override
+    public World getWorld() {
+        return children.getFirst().getWorld();
     }
 }

@@ -1,5 +1,6 @@
 package dev.brauw.mapper.logger;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 public class BukkitLoggerFactory {
@@ -11,7 +12,7 @@ public class BukkitLoggerFactory {
 
     public static java.util.logging.Logger getLogger(String name) {
         if (plugin == null) {
-            throw new IllegalStateException("BukkitLoggerFactory has not been initialized with a plugin instance");
+            return Bukkit.getLogger();
         }
         return plugin.getLogger();
     }

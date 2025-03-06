@@ -2,17 +2,19 @@ package dev.brauw.mapper.export;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import dev.brauw.mapper.export.serializer.SerializableLocation;
-import dev.brauw.mapper.region.PerspectiveRegion;
+import com.fasterxml.jackson.databind.module.SimpleModule;
+import com.google.common.base.Preconditions;
+import dev.brauw.mapper.export.serializer.LocationDeserializer;
+import dev.brauw.mapper.export.serializer.LocationSerializer;
 import dev.brauw.mapper.region.Region;
-import dev.brauw.mapper.region.PointRegion;
-import dev.brauw.mapper.region.CuboidRegion;
 import lombok.CustomLog;
+import org.bukkit.Location;
+import org.bukkit.World;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Implementation of ExportStrategy that exports regions to a JSON file.
@@ -28,26 +30,23 @@ public class JsonExportStrategy implements ExportStrategy {
     public JsonExportStrategy() {
         this.objectMapper = new ObjectMapper();
         this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+        final SimpleModule module = new SimpleModule();
+        module.addDeserializer(Location.class, new LocationDeserializer());
+        module.addSerializer(Location.class, new LocationSerializer());
+        this.objectMapper.registerModule(module);
     }
 
     @Override
     public boolean export(List<Region> regions) {
-        try {
-            // Group regions by name
-            Map<String, List<SerializableLocation>> groupedRegions = regions.stream()
-                    .collect(Collectors.groupingBy(
-                            Region::getName,
-                            Collectors.mapping(this::convertRegionToLocations, Collectors.flatMapping(Collection::stream, Collectors.toList()))
-                    ));
+        Preconditions.checkNotNull(regions);
+        Preconditions.checkArgument(!regions.isEmpty());
+        final World world = regions.getFirst().getWorld();
+        Preconditions.checkArgument(regions.stream().allMatch(region -> region.getWorld().equals(world)));
 
+        try {
             // Write to file with current date (number-based after copies)
-            File exportFile = new File("exports/regions.json");
-            int copyNumber = 1;
-            while (exportFile.exists()) {
-                exportFile = new File("exports/regions" + copyNumber + ".json");
-                copyNumber++;
-            }
-            objectMapper.writeValue(exportFile, groupedRegions);
+            File exportFile = new File(world.getWorldFolder(), "dataPoints.json");
+            objectMapper.writeValue(exportFile, regions);
 
             log.info("Exported " + regions.size() + " regions to " + exportFile.getName());
             return true;
@@ -58,43 +57,25 @@ public class JsonExportStrategy implements ExportStrategy {
     }
 
     /**
-     * Converts a region to a list of SerializableLocations.
+     * Reads regions from a World with a dataPoints.json file and a dataTypes.json file.
      *
-     * @param region the region to convert
-     * @return a list of SerializableLocations
+     * @param world the world to read the regions into
+     * @return the list of regions read from the file
      */
-    private List<SerializableLocation> convertRegionToLocations(Region region) {
-        List<SerializableLocation> locations = new ArrayList<>();
+    public List<Region> read(World world) {
+        try {
+            final File importFile = new File(world.getWorldFolder(), "dataPoints.json");
+            if (!importFile.exists()) {
+                return Collections.emptyList();
+            }
 
-        switch (region.getType()) {
-            case POINT:
-                if (region instanceof PointRegion pointRegion) {
-                    locations.add(SerializableLocation.fromLocation(
-                            pointRegion.getLocation(), false));
-                }
-                break;
-
-            case PERSPECTIVE:
-                if (region instanceof PerspectiveRegion perspectiveRegion) {
-                    locations.add(SerializableLocation.fromLocation(
-                            perspectiveRegion.getLocation(), true));
-                }
-                break;
-
-            case CUBOID:
-                if (region instanceof CuboidRegion cuboidRegion) {
-                    locations.add(SerializableLocation.fromLocation(
-                            cuboidRegion.getMin(), false));
-                    locations.add(SerializableLocation.fromLocation(
-                            cuboidRegion.getMax(), false));
-                }
-                break;
-
-            case POLYGON:
-                throw new IllegalArgumentException("Polygon regions are not supported for JSON export");
+            List<Region> regions = objectMapper.readValue(importFile, List.class);
+            log.info("Read " + regions.size() + " regions from world" + world.getName());
+            return regions;
+        } catch (IOException e) {
+            log.severe("Failed to read regions from JSON: " + e.getMessage());
+            return Collections.emptyList();
         }
-
-        return locations;
     }
 
     @Override
@@ -104,6 +85,6 @@ public class JsonExportStrategy implements ExportStrategy {
 
     @Override
     public String getDescription() {
-        return "Exports regions to a JSON file format, grouped by region name";
+        return "Exports regions to a JSON file format";
     }
 }

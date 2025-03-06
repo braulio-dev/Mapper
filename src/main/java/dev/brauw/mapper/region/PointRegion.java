@@ -4,6 +4,8 @@ import lombok.CustomLog;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
+import org.bukkit.World;
+
 import java.util.UUID;
 
 @Getter
@@ -36,5 +38,10 @@ public class PointRegion implements Region {
     @Override
     public Region.RegionType getType() {
         return RegionType.POINT;
+    }
+
+    @Override
+    public World getWorld() {
+        return location.getWorld();
     }
 }

@@ -1,11 +1,22 @@
 package dev.brauw.mapper.region;
 
+import com.fasterxml.jackson.annotation.JsonSubTypes;
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.bukkit.Location;
+import org.bukkit.World;
+
 import java.util.UUID;
 
 /**
  * Interface representing a region in the game world.
  */
+@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "_type")
+@JsonSubTypes({
+        @JsonSubTypes.Type(value = PointRegion.class, name = "PointRegion"),
+        @JsonSubTypes.Type(value = PerspectiveRegion.class, name = "PerspectiveRegion"),
+        @JsonSubTypes.Type(value = CuboidRegion.class, name = "CuboidRegion"),
+        @JsonSubTypes.Type(value = PolygonRegion.class, name = "PolygonRegion"),
+})
 public interface Region {
 
     /**
@@ -49,6 +60,13 @@ public interface Region {
      * @return the type of the region
      */
     RegionType getType();
+
+    /**
+     * Get the world
+     *
+     * @return the world this region is in
+     */
+    World getWorld();
 
     /**
      * Enum representing the different types of regions.

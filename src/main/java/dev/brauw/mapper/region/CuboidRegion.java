@@ -1,9 +1,12 @@
 package dev.brauw.mapper.region;
 
+import com.google.common.base.Preconditions;
 import lombok.CustomLog;
 import lombok.Getter;
 import lombok.Setter;
 import org.bukkit.Location;
+import org.bukkit.World;
+
 import java.util.UUID;
 
 @Getter
@@ -17,6 +20,7 @@ public class CuboidRegion implements Region {
     private final RegionOptions options;
     
     public CuboidRegion(String name, Location pos1, Location pos2, RegionOptions options) {
+        Preconditions.checkArgument(pos1.getWorld().equals(pos2.getWorld()));
         this.options = options;
         this.id = UUID.randomUUID();
         this.name = name;
@@ -49,5 +53,10 @@ public class CuboidRegion implements Region {
     @Override
     public RegionType getType() {
         return RegionType.CUBOID;
+    }
+
+    @Override
+    public World getWorld() {
+        return min.getWorld();
     }
 }

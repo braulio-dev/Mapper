@@ -6,6 +6,8 @@ import dev.brauw.mapper.session.display.BlockStrategy;
 import dev.brauw.mapper.session.display.ItemStrategy;
 import dev.brauw.mapper.session.display.PolygonStrategy;
 import dev.brauw.mapper.session.display.RegionDisplayStrategy;
+import dev.brauw.mapper.session.event.SessionCreateEvent;
+import dev.brauw.mapper.session.event.SessionEndEvent;
 import lombok.CustomLog;
 import org.bukkit.entity.Player;
 
@@ -75,9 +77,12 @@ public class SessionManager {
      */
     public EditSession getSession(Player player) {
         return playerSessions.computeIfAbsent(
-            player.getUniqueId(), 
-            uuid -> new EditSession(player)
-        );
+                player.getUniqueId(),
+                uuid -> {
+                    final EditSession session = new EditSession(this, player);
+                    new SessionCreateEvent(player).callEvent();
+                    return session;
+                });
     }
     
     /**
@@ -99,6 +104,12 @@ public class SessionManager {
     public boolean endSession(Player player) {
         EditSession removed = playerSessions.remove(player.getUniqueId());
         if (removed != null) {
+            for (Region region : removed.getRegions()) {
+                final RegionDisplayStrategy<Region> strategy = getDisplayStrategy(region);
+                strategy.hide(region, player);
+            }
+
+            new SessionEndEvent(player).callEvent();
             log.info("Ended edit session for player " + player.getName());
             return true;
         }

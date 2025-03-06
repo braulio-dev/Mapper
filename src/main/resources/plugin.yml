@@ -1,0 +1,4 @@
+name: Mapper
+version: 1.0
+api-version: '1.21'
+main: dev.brauw.mapper.MapperPlugin

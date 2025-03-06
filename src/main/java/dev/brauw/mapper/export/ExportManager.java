@@ -32,12 +32,6 @@ public class ExportManager {
      * Registers the default export strategies.
      */
     private void registerDefaultStrategies() {
-        // Setup export directory
-        File exportDir = new File(plugin.getDataFolder(), "exports");
-        if (!exportDir.exists()) {
-            exportDir.mkdirs();
-        }
-
         // JSON export strategy
         registerExportStrategy("json", new JsonExportStrategy());
 
@@ -52,23 +46,6 @@ public class ExportManager {
      */
     public void registerExportStrategy(String id, ExportStrategy strategy) {
         exportStrategies.put(id.toLowerCase(), strategy);
-    }
-
-    /**
-     * Exports the regions using the specified export strategy.
-     *
-     * @param strategyId the identifier of the export strategy to use
-     * @param regions the list of regions to export
-     * @return true if the export was successful, false otherwise
-     */
-    public boolean exportRegions(String strategyId, List<Region> regions) {
-        ExportStrategy strategy = exportStrategies.get(strategyId.toLowerCase());
-        if (strategy == null) {
-            log.warning("Export strategy not found: " + strategyId);
-            return false;
-        }
-
-        return strategy.export(new ArrayList<>(regions));
     }
 
     /**

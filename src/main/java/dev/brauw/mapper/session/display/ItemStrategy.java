@@ -9,7 +9,10 @@ import org.bukkit.Material;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.util.Transformation;
 import org.jetbrains.annotations.NotNull;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -29,12 +32,10 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
         this.plugin = plugin;
     }
 
-    @Override
-    public void display(@NotNull PointRegion region, @NotNull Player player) {
+    private ItemDisplay getDisplay(PointRegion region) {
         final Location location = region.getLocation();
 
-        // Get or create the item display for this region
-        final ItemDisplay itemDisplay = displays.computeIfAbsent(region, key -> {
+        return displays.computeIfAbsent(region, key -> {
             return location.getWorld().spawn(location, ItemDisplay.class, spawned -> {
                 spawned.setGlowing(true);
                 spawned.setVisibleByDefault(false);
@@ -42,11 +43,23 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
 
                 // Item data
                 spawned.setItemStack(new ItemStack(Material.SEA_LANTERN));
+                spawned.setTransformation(new Transformation(
+                        new Vector3f(),
+                        new AxisAngle4f(),
+                        new Vector3f(0.3f),
+                        new AxisAngle4f()
+                ));
 
                 // Important, because we don't want the item to be saved in case the server shuts down
                 spawned.setPersistent(false);
             });
         });
+    }
+
+    @Override
+    public void display(@NotNull PointRegion region, @NotNull Player player) {
+        // Get or create the item display for this region
+        final ItemDisplay itemDisplay = getDisplay(region);
 
         // Show the item to the player
         player.showEntity(plugin, itemDisplay);
@@ -55,7 +68,11 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
 
     @Override
     public void update(@NotNull PointRegion region, @NotNull Player player) {
-        // ignored, items wont do anything each tick
+        final ItemDisplay removed = displays.remove(region);
+        if (removed != null && removed.isValid()) {
+            removed.remove();
+        }
+        display(region, player);
     }
 
     @Override

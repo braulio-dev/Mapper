@@ -31,8 +31,7 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         this.plugin = plugin;
     }
 
-    @Override
-    public void display(@NotNull CuboidRegion region, @NotNull Player player) {
+    private BlockDisplay getDisplay(CuboidRegion region) {
         final Location min = region.getMin();
         final Location max = region.getMax();
         final Location center = min.clone().add(
@@ -45,19 +44,18 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         final float widthY = (float) Math.abs(max.getY() - min.getY());
         final float widthZ = (float) Math.abs(max.getZ() - min.getZ());
 
-        // Get or create the block display for this region
-        final BlockDisplay blockDisplay = displays.computeIfAbsent(region, key -> {
+        return displays.computeIfAbsent(region, key -> {
             return center.getWorld().spawn(center, BlockDisplay.class, spawned -> {
                 spawned.setGlowing(true);
                 spawned.setVisibleByDefault(false);
                 spawned.setGlowColorOverride(region.getOptions().getColor());
-                
+
                 // Block data
                 spawned.setBlock(Material.TINTED_GLASS.createBlockData());
                 spawned.setTransformation(new Transformation(
                         new Vector3f(widthX / 2, widthY / 2, widthZ / 2).mul(-1),
                         new AxisAngle4f(),
-                        new Vector3f(widthX, widthY, widthZ),
+                        new Vector3f(widthX, widthY, widthZ).add(0.01f, 0.01f, 0.01f),
                         new AxisAngle4f()
                 ));
 
@@ -65,6 +63,12 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
                 spawned.setPersistent(false);
             });
         });
+    }
+
+    @Override
+    public void display(@NotNull CuboidRegion region, @NotNull Player player) {
+        // Get or create the block display for this region
+        final BlockDisplay blockDisplay = getDisplay(region);
 
         // Show the display to the player
         player.showEntity(plugin, blockDisplay);
@@ -73,7 +77,12 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
 
     @Override
     public void update(@NotNull CuboidRegion region, @NotNull Player player) {
-        // ignored, items wont do anything each tick
+        final BlockDisplay removed = displays.remove(region);
+        if (removed != null && removed.isValid()) {
+            removed.remove();
+        }
+
+        display(region, player);
     }
 
     @Override
