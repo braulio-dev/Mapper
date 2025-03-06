@@ -2,7 +2,7 @@ package dev.brauw.mapper.session;
 
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.Region;
-import dev.brauw.mapper.session.display.CuboidStrategy;
+import dev.brauw.mapper.session.display.BlockStrategy;
 import dev.brauw.mapper.session.display.ItemStrategy;
 import dev.brauw.mapper.session.display.PolygonStrategy;
 import dev.brauw.mapper.session.display.RegionDisplayStrategy;
@@ -48,10 +48,10 @@ public class SessionManager {
 
     private void createDisplayStrategies() {
         final ItemStrategy itemStrategy = new ItemStrategy(plugin);
-        final CuboidStrategy cuboidStrategy = new CuboidStrategy(plugin);
-        final PolygonStrategy polygonStrategy = new PolygonStrategy(cuboidStrategy);
+        final BlockStrategy blockStrategy = new BlockStrategy(plugin);
+        final PolygonStrategy polygonStrategy = new PolygonStrategy(blockStrategy);
         this.displayStrategies.put(Region.RegionType.POLYGON, polygonStrategy);
-        this.displayStrategies.put(Region.RegionType.CUBOID, cuboidStrategy);
+        this.displayStrategies.put(Region.RegionType.CUBOID, blockStrategy);
         this.displayStrategies.put(Region.RegionType.POINT, itemStrategy);
         this.displayStrategies.put(Region.RegionType.PERSPECTIVE, itemStrategy);
     }

@@ -4,11 +4,9 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.CuboidRegion;
-import dev.brauw.mapper.region.PointRegion;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.BlockDisplay;
-import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Transformation;
 import org.jetbrains.annotations.NotNull;
@@ -23,13 +21,13 @@ import java.util.UUID;
 /**
  * Renders a glowing block at the cuboid's location.
  */
-public class CuboidStrategy implements RegionDisplayStrategy<CuboidRegion> {
+public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
 
     private final Map<CuboidRegion, BlockDisplay> displays = new HashMap<>();
     private final Multimap<CuboidRegion, UUID> viewers = ArrayListMultimap.create();
     private final MapperPlugin plugin;
 
-    public CuboidStrategy(MapperPlugin plugin) {
+    public BlockStrategy(MapperPlugin plugin) {
         this.plugin = plugin;
     }
 
