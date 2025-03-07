@@ -9,6 +9,7 @@ import dev.brauw.mapper.session.display.RegionDisplayStrategy;
 import dev.brauw.mapper.session.event.SessionCreateEvent;
 import dev.brauw.mapper.session.event.SessionEndEvent;
 import lombok.CustomLog;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 import java.util.*;
@@ -49,13 +50,14 @@ public class SessionManager {
     }
 
     private void createDisplayStrategies() {
-        final ItemStrategy itemStrategy = new ItemStrategy(plugin);
+        final ItemStrategy pointStrategy = new ItemStrategy(plugin, Material.REDSTONE_LAMP);
+        final ItemStrategy perspectiveStrategy =  new ItemStrategy(plugin, Material.GLOWSTONE);
         final BlockStrategy blockStrategy = new BlockStrategy(plugin);
         final PolygonStrategy polygonStrategy = new PolygonStrategy(blockStrategy);
         this.displayStrategies.put(Region.RegionType.POLYGON, polygonStrategy);
         this.displayStrategies.put(Region.RegionType.CUBOID, blockStrategy);
-        this.displayStrategies.put(Region.RegionType.POINT, itemStrategy);
-        this.displayStrategies.put(Region.RegionType.PERSPECTIVE, itemStrategy);
+        this.displayStrategies.put(Region.RegionType.POINT, pointStrategy);
+        this.displayStrategies.put(Region.RegionType.PERSPECTIVE, perspectiveStrategy);
     }
 
     /**

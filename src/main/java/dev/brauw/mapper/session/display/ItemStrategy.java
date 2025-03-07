@@ -26,9 +26,11 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
 
     private final Map<PointRegion, ItemDisplay> displays = new HashMap<>();
     private final Multimap<PointRegion, UUID> viewers = ArrayListMultimap.create();
+    private final Material material;
     private final MapperPlugin plugin;
 
-    public ItemStrategy(MapperPlugin plugin) {
+    public ItemStrategy(MapperPlugin plugin, Material material) {
+        this.material = material;
         this.plugin = plugin;
     }
 
@@ -42,7 +44,7 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
                 spawned.setGlowColorOverride(region.getOptions().getColor());
 
                 // Item data
-                spawned.setItemStack(new ItemStack(Material.SEA_LANTERN));
+                spawned.setItemStack(new ItemStack(material));
                 spawned.setTransformation(new Transformation(
                         new Vector3f(),
                         new AxisAngle4f(),
@@ -52,6 +54,8 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
 
                 // Important, because we don't want the item to be saved in case the server shuts down
                 spawned.setPersistent(false);
+
+                spawned.teleport(spawned.getLocation().setDirection(location.getDirection()));
             });
         });
     }
