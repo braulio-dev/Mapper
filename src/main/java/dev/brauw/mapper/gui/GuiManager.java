@@ -1,8 +1,7 @@
-package dev.brauw.mapper.listener;
+package dev.brauw.mapper.gui;
 
-import dev.brauw.mapper.listener.gui.GuiColorSelect;
-import dev.brauw.mapper.listener.gui.GuiSetName;
-import dev.brauw.mapper.region.Region;
+import dev.brauw.mapper.gui.selector.GuiColorSelect;
+import dev.brauw.mapper.gui.selector.GuiSetName;
 import dev.brauw.mapper.region.RegionOptions;
 import dev.brauw.mapper.session.EditSession;
 import org.bukkit.Material;
@@ -12,7 +11,6 @@ import xyz.xenondevs.invui.window.AnvilWindow;
 
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
-import java.util.function.BiFunction;
 
 public class GuiManager {
 

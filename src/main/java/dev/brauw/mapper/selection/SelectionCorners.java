@@ -1,9 +1,7 @@
-package dev.brauw.mapper.listener.model;
+package dev.brauw.mapper.selection;
 
 import lombok.Data;
-import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.bukkit.Location;
 
 @Data

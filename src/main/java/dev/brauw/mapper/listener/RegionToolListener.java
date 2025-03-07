@@ -1,6 +1,7 @@
 package dev.brauw.mapper.listener;
 
 import dev.brauw.mapper.MapperPlugin;
+import dev.brauw.mapper.selection.SelectionHandler;
 import dev.brauw.mapper.session.EditSession;
 import dev.brauw.mapper.tool.RegionToolManager;
 import dev.brauw.mapper.tool.ToolRegistry.ToolType;

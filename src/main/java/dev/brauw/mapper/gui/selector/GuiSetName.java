@@ -1,6 +1,5 @@
-package dev.brauw.mapper.listener.gui;
+package dev.brauw.mapper.gui.selector;
 
-import dev.brauw.mapper.region.RegionColor;
 import dev.brauw.mapper.region.RegionOptions;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
