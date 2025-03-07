@@ -1,7 +1,15 @@
 package dev.brauw.mapper.region;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
+import lombok.Builder;
 import lombok.Getter;
+import lombok.extern.jackson.Jacksonized;
 import org.bukkit.Location;
+
+import java.util.UUID;
 
 @Getter
 public class PerspectiveRegion extends PointRegion {
@@ -17,6 +25,21 @@ public class PerspectiveRegion extends PointRegion {
 
     public PerspectiveRegion(String name, Location location) {
         this(name, location, RegionOptions.builder().build());
+    }
+
+    @JsonCreator
+    public PerspectiveRegion(
+            @JsonProperty("id") UUID id,
+            @JsonProperty("name") String name,
+            @JsonProperty("location") Location location,
+            @JsonProperty("options") RegionOptions options,
+            @JsonProperty("yaw") float yaw,
+            @JsonProperty("pitch") float pitch) {
+        super(id, name, location, options);
+        location.setPitch(pitch);
+        location.setYaw(yaw);
+        this.yaw = yaw;
+        this.pitch = pitch;
     }
 
     @Override

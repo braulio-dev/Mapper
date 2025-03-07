@@ -63,10 +63,10 @@ public class RegionToolListener implements Listener {
         if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
             selectionHandler.setFirstPosition(session, event);
         }
-        else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+        else if (event.getAction().isRightClick()) {
             if (event.getPlayer().isSneaking()) {
                 selectionHandler.createCuboidRegion(session);
-            } else {
+            } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
                 selectionHandler.setSecondPosition(session, event);
             }
         }
@@ -74,6 +74,6 @@ public class RegionToolListener implements Listener {
 
     private void notifyNotImplemented(Player player) {
         player.sendActionBar(Component.text("This tool is not implemented yet.", NamedTextColor.DARK_RED));
-        player.playSound(player, Sound.ENTITY_WITHER_DEATH, 1.0f, 0.4f);
+        player.playSound(player, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE_FAR, 1.0f, 2f);
     }
 }

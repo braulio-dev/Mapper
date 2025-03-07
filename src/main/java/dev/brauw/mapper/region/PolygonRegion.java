@@ -1,8 +1,12 @@
 package dev.brauw.mapper.region;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.jackson.Jacksonized;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -33,6 +37,18 @@ public class PolygonRegion implements Region {
 
     public PolygonRegion(String name, List<CuboidRegion> children) {
         this(name, children, RegionOptions.builder().build());
+    }
+
+    @JsonCreator
+    public PolygonRegion(
+            UUID id,
+            String name,
+            List<CuboidRegion> children,
+            RegionOptions options) {
+        this.id = id;
+        this.name = name;
+        this.children = Collections.unmodifiableList(children);
+        this.options = options;
     }
 
     @Override

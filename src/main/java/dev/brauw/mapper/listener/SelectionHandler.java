@@ -9,14 +9,18 @@ import dev.brauw.mapper.session.EditSession;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.WeakHashMap;
 
 /**
@@ -50,7 +54,7 @@ public class SelectionHandler {
      */
     public void setFirstPosition(EditSession session, PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        Location location = event.getInteractionPoint();
+        Location location = getTargetPoint(player);
         if (location == null) return;
 
         getSelection(player).setFirstCorner(location);
@@ -69,7 +73,7 @@ public class SelectionHandler {
      */
     public void setSecondPosition(EditSession session, PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        Location location = event.getInteractionPoint();
+        Location location = getTargetPoint(player);
         if (location == null) return;
 
         getSelection(player).setSecondCorner(location);
@@ -145,17 +149,24 @@ public class SelectionHandler {
      * @param location The location at which to create the perspective region.
      */
     public void createPerspectiveRegion(EditSession session, Location location) {
-        if (location == null) return;
+        final Player player = session.getOwner();
+        final Location target = player.isSneaking() ? player.getLocation() : location;
+
+        if (target == null) {
+            return;
+        }
+
+        target.setDirection(player.getLocation().getDirection());
         guiManager.openRegionCreateGui(session, (name, options) -> {
-            if (!validate(session.getOwner(), name, options)) {
+            if (!validate(player, name, options)) {
                 return;
             }
 
-            PerspectiveRegion region = new PerspectiveRegion(name, location, options);
+            PerspectiveRegion region = new PerspectiveRegion(name, target, options);
             session.addRegion(region);
         }, () -> {
             // Clear selections if GUI is closed
-            selections.remove(session.getOwner());
+            selections.remove(player);
         });
     }
 
@@ -169,21 +180,11 @@ public class SelectionHandler {
      */
     public void handleRegionDeletion(EditSession session, PlayerInteractEvent event) {
         Player player = session.getOwner();
-        RayTraceResult result = player.getWorld().rayTraceBlocks(
-                player.getEyeLocation(),
-                player.getLocation().getDirection(),
-                5.0,
-                org.bukkit.FluidCollisionMode.NEVER,
-                true
-        );
-
-        if (result == null) return;
-
-        Vector clickedPoint = result.getHitPosition();
-        Location location = clickedPoint.toLocation(player.getWorld());
+        final Location location = getTargetPoint(player);
+        if (location == null) return;
 
         session.getRegions().stream()
-                .filter(region -> region.contains(location))
+                .filter(region -> region.contains(location) || (region instanceof PointRegion point) && point.getLocation().distance(location) < 0.2)
                 .findFirst()
                 .ifPresentOrElse(
                         region -> {
@@ -197,6 +198,22 @@ public class SelectionHandler {
                             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                         }
                 );
+    }
+
+    private static @Nullable Location getTargetPoint(Player player) {
+        RayTraceResult result = player.getWorld().rayTraceBlocks(
+                player.getEyeLocation(),
+                player.getLocation().getDirection(),
+                Objects.requireNonNull(player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)).getValue() + 0.2,
+                FluidCollisionMode.NEVER,
+                true
+        );
+
+        if (result == null) {
+            return null;
+        }
+
+        return result.getHitPosition().toLocation(player.getWorld());
     }
 
     /**
@@ -217,6 +234,7 @@ public class SelectionHandler {
             return false;
         }
 
+        player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
         return true;
     }
 }

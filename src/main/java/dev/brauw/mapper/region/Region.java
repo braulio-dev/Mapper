@@ -1,5 +1,6 @@
 package dev.brauw.mapper.region;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import org.bukkit.Location;
@@ -10,7 +11,11 @@ import java.util.UUID;
 /**
  * Interface representing a region in the game world.
  */
-@JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "_type")
+@JsonTypeInfo(
+        use = JsonTypeInfo.Id.NAME,
+        include = JsonTypeInfo.As.PROPERTY,
+        property = "@ctype"
+)
 @JsonSubTypes({
         @JsonSubTypes.Type(value = PointRegion.class, name = "PointRegion"),
         @JsonSubTypes.Type(value = PerspectiveRegion.class, name = "PerspectiveRegion"),
@@ -59,6 +64,7 @@ public interface Region {
      *
      * @return the type of the region
      */
+    @JsonIgnore
     RegionType getType();
 
     /**
@@ -66,6 +72,7 @@ public interface Region {
      *
      * @return the world this region is in
      */
+    @JsonIgnore
     World getWorld();
 
     /**

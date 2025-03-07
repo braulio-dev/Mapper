@@ -2,10 +2,7 @@ package dev.brauw.mapper.session;
 
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.Region;
-import dev.brauw.mapper.session.display.BlockStrategy;
-import dev.brauw.mapper.session.display.ItemStrategy;
-import dev.brauw.mapper.session.display.PolygonStrategy;
-import dev.brauw.mapper.session.display.RegionDisplayStrategy;
+import dev.brauw.mapper.session.display.*;
 import dev.brauw.mapper.session.event.SessionCreateEvent;
 import dev.brauw.mapper.session.event.SessionEndEvent;
 import lombok.CustomLog;
@@ -51,7 +48,7 @@ public class SessionManager {
 
     private void createDisplayStrategies() {
         final ItemStrategy pointStrategy = new ItemStrategy(plugin, Material.REDSTONE_LAMP);
-        final ItemStrategy perspectiveStrategy =  new ItemStrategy(plugin, Material.GLOWSTONE);
+        final ArmorStandStrategy perspectiveStrategy =  new ArmorStandStrategy(plugin);
         final BlockStrategy blockStrategy = new BlockStrategy(plugin);
         final PolygonStrategy polygonStrategy = new PolygonStrategy(blockStrategy);
         this.displayStrategies.put(Region.RegionType.POLYGON, polygonStrategy);

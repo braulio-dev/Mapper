@@ -1,5 +1,6 @@
 package dev.brauw.mapper.listener.gui;
 
+import dev.brauw.mapper.listener.model.GuiColor;
 import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.region.RegionOptions;
 import lombok.EqualsAndHashCode;
@@ -23,23 +24,26 @@ import xyz.xenondevs.invui.item.impl.AbstractItem;
 public class GuiColorSelect extends AbstractGui {
 
     private final RegionOptions.RegionOptionsBuilder builder;
+    private final Runnable updater;
 
-    public GuiColorSelect(RegionOptions.RegionOptionsBuilder builder) {
-        super(9, 3);
+    public GuiColorSelect(RegionOptions.RegionOptionsBuilder builder, Runnable updater) {
+        super(9, 4);
         this.builder = builder;
+        this.updater = updater;
 
         final Structure structure = new Structure(
                 "# # # # # # # # #",
                 "# r o y g b p w #",
+                "# # # # # # # # #",
                 "# # # # # # # # #"
         );
-        structure.addIngredient('r', new ColorButton(Color.RED, Material.RED_CONCRETE, "Red"));
-        structure.addIngredient('o', new ColorButton(Color.ORANGE, Material.ORANGE_CONCRETE, "Orange"));
-        structure.addIngredient('y', new ColorButton(Color.YELLOW, Material.YELLOW_CONCRETE, "Yellow"));
-        structure.addIngredient('g', new ColorButton(Color.GREEN, Material.GREEN_CONCRETE, "Green"));
-        structure.addIngredient('b', new ColorButton(Color.BLUE, Material.BLUE_CONCRETE, "Blue"));
-        structure.addIngredient('p', new ColorButton(Color.PURPLE, Material.PURPLE_CONCRETE, "Purple"));
-        structure.addIngredient('m', new ColorButton(Color.WHITE, Material.WHITE_CONCRETE, "White"));
+        structure.addIngredient('r', new ColorButton(GuiColor.RED));
+        structure.addIngredient('o', new ColorButton(GuiColor.ORANGE));
+        structure.addIngredient('y', new ColorButton(GuiColor.YELLOW));
+        structure.addIngredient('g', new ColorButton(GuiColor.GREEN));
+        structure.addIngredient('b', new ColorButton(GuiColor.BLUE));
+        structure.addIngredient('p', new ColorButton(GuiColor.PURPLE));
+        structure.addIngredient('w', new ColorButton(GuiColor.WHITE));
         applyStructure(structure);
     }
 
@@ -47,12 +51,13 @@ public class GuiColorSelect extends AbstractGui {
     @Value
     private class ColorButton extends AbstractItem {
 
-        Color color;
-        Material material;
-        String name;
+        GuiColor color;
 
         @Override
         public ItemProvider getItemProvider() {
+            final Color color = this.color.getColor();
+            final Material material = this.color.getMaterial();
+            final String name = this.color.getName();
             final Component text = Component.text(name, TextColor.color(color.getRed(), color.getGreen(), color.getBlue()));
             return new ItemBuilder(material)
                     .setDisplayName(new AdventureComponentWrapper(text));
@@ -60,7 +65,9 @@ public class GuiColorSelect extends AbstractGui {
 
         @Override
         public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
+            final Color color = this.color.getColor();
             builder.color(color);
+            updater.run();
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
         }
     }

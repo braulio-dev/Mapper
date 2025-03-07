@@ -21,9 +21,9 @@ public class ToolRegistry {
 
     public enum ToolType {
         POINT_REGION_CREATOR(0, Material.BEACON, "Point Region Creator"),
-        PERSPECTIVE_REGION_CREATOR(1, Material.SPYGLASS, "Perspective Region Creator"),
-        CUBOID_WAND(2, Material.GOLDEN_AXE, "Cuboid Region Wand"),
-        POLYGON_WAND(3, Material.GOLDEN_HOE, "Polygon Region Wand"),
+        PERSPECTIVE_REGION_CREATOR(1, Material.ARMOR_STAND, "Perspective Region Creator"),
+        CUBOID_WAND(2, Material.BLAZE_ROD, "Cuboid Region Wand"),
+        POLYGON_WAND(3, Material.BREEZE_ROD, "Polygon Region Wand"),
         REGION_DELETION_TOOL(4, Material.SHEARS, "Region Deletion Tool");
 
         @Getter final int slot;

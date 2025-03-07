@@ -16,18 +16,11 @@ public class LocationDeserializer extends JsonDeserializer<Location> {
     public Location deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
         JsonNode node = p.getCodec().readTree(p);
 
-        String worldName = node.get("world").asText();
-        World world = Bukkit.getWorld(worldName);
-        if (world == null) {
-            throw new IOException("World '" + worldName + "' not found");
-        }
-
         double x = node.get("x").asDouble();
         double y = node.get("y").asDouble();
         double z = node.get("z").asDouble();
-        float yaw = node.has("yaw") ? (float) node.get("yaw").asDouble() : 0f;
-        float pitch = node.has("pitch") ? (float) node.get("pitch").asDouble() : 0f;
+        World world = Bukkit.getWorld(node.get("world").asText());
 
-        return new Location(world, x, y, z, yaw, pitch);
+        return new Location(world, x, y, z, 0, 0);
     }
 }

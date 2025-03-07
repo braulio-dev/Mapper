@@ -1,13 +1,18 @@
 package dev.brauw.mapper.export;
 
+import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.base.Preconditions;
+import dev.brauw.mapper.export.model.RegionCollection;
+import dev.brauw.mapper.export.serializer.ColorDeserializer;
+import dev.brauw.mapper.export.serializer.ColorSerializer;
 import dev.brauw.mapper.export.serializer.LocationDeserializer;
 import dev.brauw.mapper.export.serializer.LocationSerializer;
 import dev.brauw.mapper.region.Region;
 import lombok.CustomLog;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -30,9 +35,12 @@ public class JsonExportStrategy implements ExportStrategy {
     public JsonExportStrategy() {
         this.objectMapper = new ObjectMapper();
         this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
+
         final SimpleModule module = new SimpleModule();
         module.addDeserializer(Location.class, new LocationDeserializer());
         module.addSerializer(Location.class, new LocationSerializer());
+        module.addDeserializer(Color.class, new ColorDeserializer());
+        module.addSerializer(Color.class, new ColorSerializer());
         this.objectMapper.registerModule(module);
     }
 
@@ -46,7 +54,9 @@ public class JsonExportStrategy implements ExportStrategy {
         try {
             // Write to file with current date (number-based after copies)
             File exportFile = new File(world.getWorldFolder(), "dataPoints.json");
-            objectMapper.writeValue(exportFile, regions);
+            final RegionCollection collection = new RegionCollection();
+            collection.addAll(regions);
+            objectMapper.writeValue(exportFile, collection);
 
             log.info("Exported " + regions.size() + " regions to " + exportFile.getName());
             return true;
@@ -69,7 +79,10 @@ public class JsonExportStrategy implements ExportStrategy {
                 return Collections.emptyList();
             }
 
-            List<Region> regions = objectMapper.readValue(importFile, List.class);
+            List<Region> regions = objectMapper.readValue(
+                    importFile,
+                    RegionCollection.class
+            );
             log.info("Read " + regions.size() + " regions from world" + world.getName());
             return regions;
         } catch (IOException e) {

@@ -1,9 +1,14 @@
 package dev.brauw.mapper.region;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.google.common.base.Preconditions;
+import lombok.Builder;
 import lombok.CustomLog;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.jackson.Jacksonized;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -26,12 +31,12 @@ public class CuboidRegion implements Region {
         this.name = name;
         
         // Calculate min/max coordinates
-        int minX = Math.min(pos1.getBlockX(), pos2.getBlockX());
-        int minY = Math.min(pos1.getBlockY(), pos2.getBlockY());
-        int minZ = Math.min(pos1.getBlockZ(), pos2.getBlockZ());
-        int maxX = Math.max(pos1.getBlockX(), pos2.getBlockX());
-        int maxY = Math.max(pos1.getBlockY(), pos2.getBlockY());
-        int maxZ = Math.max(pos1.getBlockZ(), pos2.getBlockZ());
+        float minX = (float) Math.min(pos1.getX(), pos2.getX());
+        float minY = (float) Math.min(pos1.getY(), pos2.getY());
+        float minZ = (float) Math.min(pos1.getZ(), pos2.getZ());
+        float maxX = (float) Math.max(pos1.getX(), pos2.getX());
+        float maxY = (float) Math.max(pos1.getY(), pos2.getY());
+        float maxZ = (float) Math.max(pos1.getZ(), pos2.getZ());
         
         this.min = new Location(pos1.getWorld(), minX, minY, minZ);
         this.max = new Location(pos1.getWorld(), maxX, maxY, maxZ);
@@ -39,6 +44,20 @@ public class CuboidRegion implements Region {
 
     public CuboidRegion(String name, Location pos1, Location pos2) {
         this(name, pos1, pos2, RegionOptions.builder().build());
+    }
+
+    @JsonCreator
+    public CuboidRegion(
+            @JsonProperty("id") UUID id,
+            @JsonProperty("name") String name,
+            @JsonProperty("min") Location min,
+            @JsonProperty("max") Location max,
+            @JsonProperty("options") RegionOptions options) {
+        this.id = id;
+        this.name = name;
+        this.min = min;
+        this.max = max;
+        this.options = options;
     }
     
     @Override

@@ -55,7 +55,7 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
                 spawned.setTransformation(new Transformation(
                         new Vector3f(widthX / 2, widthY / 2, widthZ / 2).mul(-1),
                         new AxisAngle4f(),
-                        new Vector3f(widthX, widthY, widthZ).add(0.01f, 0.01f, 0.01f),
+                        new Vector3f(widthX, widthY, widthZ),
                         new AxisAngle4f()
                 ));
 
