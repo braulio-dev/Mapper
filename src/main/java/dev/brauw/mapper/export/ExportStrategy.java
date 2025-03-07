@@ -1,6 +1,8 @@
 package dev.brauw.mapper.export;
 
 import dev.brauw.mapper.region.Region;
+
+import java.io.File;
 import java.util.List;
 
 /**
@@ -13,9 +15,10 @@ public interface ExportStrategy {
      * Exports a list of regions.
      *
      * @param regions the list of regions to export
+     * @param folder the folder to export the regions to
      * @return true if the export was successful, false otherwise
      */
-    boolean export(List<Region> regions);
+    boolean export(List<Region> regions, File folder);
 
     /**
      * Gets the name of the export strategy.

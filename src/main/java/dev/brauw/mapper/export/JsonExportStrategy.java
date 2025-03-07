@@ -39,7 +39,7 @@ public class JsonExportStrategy implements ExportStrategy {
     }
 
     @Override
-    public boolean export(List<Region> regions) {
+    public boolean export(List<Region> regions, File exportFile) {
         Preconditions.checkNotNull(regions);
         Preconditions.checkArgument(!regions.isEmpty());
         final World world = regions.getFirst().getWorld();
@@ -47,7 +47,6 @@ public class JsonExportStrategy implements ExportStrategy {
 
         try {
             // Write to file with current date (number-based after copies)
-            File exportFile = new File(world.getWorldFolder(), "dataPoints.json");
             final RegionCollection collection = new RegionCollection();
             collection.addAll(regions);
             objectMapper.writeValue(exportFile, collection);
@@ -63,25 +62,21 @@ public class JsonExportStrategy implements ExportStrategy {
     /**
      * Reads regions from a World with a dataPoints.json file and a dataTypes.json file.
      *
-     * @param world the world to read the regions into
+     * @param file the file to read from
      * @return the list of regions read from the file
      */
-    public List<Region> read(World world) {
+    public List<Region> read(File file) {
         try {
-            final File importFile = new File(world.getWorldFolder(), "dataPoints.json");
-            if (!importFile.exists()) {
+            if (!file.exists()) {
                 return Collections.emptyList();
             }
 
             List<Region> regions = objectMapper.readValue(
-                    importFile,
+                    file,
                     RegionCollection.class
             );
 
-            // because it isn't serialized
-            regions.forEach(region -> region.setWorld(world));
-
-            log.info("Read " + regions.size() + " regions from world" + world.getName());
+            log.info("Read " + regions.size() + " regions");
             return regions;
         } catch (IOException e) {
             log.severe("Failed to read regions from JSON: " + e.getMessage());
