@@ -19,8 +19,7 @@ public class LocationDeserializer extends JsonDeserializer<Location> {
         double x = node.get("x").asDouble();
         double y = node.get("y").asDouble();
         double z = node.get("z").asDouble();
-        World world = Bukkit.getWorld(node.get("world").asText());
 
-        return new Location(world, x, y, z, 0, 0);
+        return new Location(null, x, y, z, 0, 0);
     }
 }

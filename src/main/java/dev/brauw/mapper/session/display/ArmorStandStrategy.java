@@ -5,7 +5,6 @@ import com.google.common.collect.Multimap;
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.PointRegion;
 import io.papermc.paper.entity.LookAnchor;
-import io.papermc.paper.math.Rotations;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
@@ -15,7 +14,6 @@ import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scoreboard.Scoreboard;
 import org.bukkit.scoreboard.Team;
-import org.bukkit.util.EulerAngle;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
@@ -82,7 +80,7 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
         Team team = scoreboard.getTeam(teamName);
         if (team == null) {
             team = scoreboard.registerNewTeam(teamName);
-            final Color color = region.getOptions().getColor();
+            final Color color = region.getOptions().getColor().getBukkitColor();
             team.color(NamedTextColor.nearestTo(TextColor.color(color.asRGB())));
         }
 

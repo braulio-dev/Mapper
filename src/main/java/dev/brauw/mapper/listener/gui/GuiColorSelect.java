@@ -1,7 +1,6 @@
 package dev.brauw.mapper.listener.gui;
 
-import dev.brauw.mapper.listener.model.GuiColor;
-import dev.brauw.mapper.region.Region;
+import dev.brauw.mapper.region.RegionColor;
 import dev.brauw.mapper.region.RegionOptions;
 import lombok.EqualsAndHashCode;
 import lombok.Value;
@@ -37,13 +36,13 @@ public class GuiColorSelect extends AbstractGui {
                 "# # # # # # # # #",
                 "# # # # # # # # #"
         );
-        structure.addIngredient('r', new ColorButton(GuiColor.RED));
-        structure.addIngredient('o', new ColorButton(GuiColor.ORANGE));
-        structure.addIngredient('y', new ColorButton(GuiColor.YELLOW));
-        structure.addIngredient('g', new ColorButton(GuiColor.GREEN));
-        structure.addIngredient('b', new ColorButton(GuiColor.BLUE));
-        structure.addIngredient('p', new ColorButton(GuiColor.PURPLE));
-        structure.addIngredient('w', new ColorButton(GuiColor.WHITE));
+        structure.addIngredient('r', new ColorButton(RegionColor.RED));
+        structure.addIngredient('o', new ColorButton(RegionColor.ORANGE));
+        structure.addIngredient('y', new ColorButton(RegionColor.YELLOW));
+        structure.addIngredient('g', new ColorButton(RegionColor.GREEN));
+        structure.addIngredient('b', new ColorButton(RegionColor.BLUE));
+        structure.addIngredient('p', new ColorButton(RegionColor.PURPLE));
+        structure.addIngredient('w', new ColorButton(RegionColor.WHITE));
         applyStructure(structure);
     }
 
@@ -51,11 +50,11 @@ public class GuiColorSelect extends AbstractGui {
     @Value
     private class ColorButton extends AbstractItem {
 
-        GuiColor color;
+        RegionColor color;
 
         @Override
         public ItemProvider getItemProvider() {
-            final Color color = this.color.getColor();
+            final Color color = this.color.getBukkitColor();
             final Material material = this.color.getMaterial();
             final String name = this.color.getName();
             final Component text = Component.text(name, TextColor.color(color.getRed(), color.getGreen(), color.getBlue()));
@@ -65,7 +64,6 @@ public class GuiColorSelect extends AbstractGui {
 
         @Override
         public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent inventoryClickEvent) {
-            final Color color = this.color.getColor();
             builder.color(color);
             updater.run();
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);

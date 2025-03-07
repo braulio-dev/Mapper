@@ -1,18 +1,14 @@
 package dev.brauw.mapper.export;
 
-import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.google.common.base.Preconditions;
 import dev.brauw.mapper.export.model.RegionCollection;
-import dev.brauw.mapper.export.serializer.ColorDeserializer;
-import dev.brauw.mapper.export.serializer.ColorSerializer;
 import dev.brauw.mapper.export.serializer.LocationDeserializer;
 import dev.brauw.mapper.export.serializer.LocationSerializer;
 import dev.brauw.mapper.region.Region;
 import lombok.CustomLog;
-import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -39,8 +35,6 @@ public class JsonExportStrategy implements ExportStrategy {
         final SimpleModule module = new SimpleModule();
         module.addDeserializer(Location.class, new LocationDeserializer());
         module.addSerializer(Location.class, new LocationSerializer());
-        module.addDeserializer(Color.class, new ColorDeserializer());
-        module.addSerializer(Color.class, new ColorSerializer());
         this.objectMapper.registerModule(module);
     }
 
@@ -83,6 +77,10 @@ public class JsonExportStrategy implements ExportStrategy {
                     importFile,
                     RegionCollection.class
             );
+
+            // because it isn't serialized
+            regions.forEach(region -> region.setWorld(world));
+
             log.info("Read " + regions.size() + " regions from world" + world.getName());
             return regions;
         } catch (IOException e) {

@@ -1,7 +1,6 @@
 package dev.brauw.mapper.listener.gui;
 
-import dev.brauw.mapper.listener.model.GuiColor;
-import dev.brauw.mapper.region.Region;
+import dev.brauw.mapper.region.RegionColor;
 import dev.brauw.mapper.region.RegionOptions;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -48,7 +47,7 @@ public class GuiSetName extends AbstractGui {
         @Override
         public ItemProvider getItemProvider() {
             if (!name.get().isEmpty()) {
-                ItemBuilder itemBuilder = new ItemBuilder(GuiColor.fromColor(builder.build().getColor()).getMaterial());
+                ItemBuilder itemBuilder = new ItemBuilder(builder.build().getColor().getMaterial());
                 itemBuilder.setDisplayName(new AdventureComponentWrapper(Component.text("Done!", NamedTextColor.GREEN)));
                 return itemBuilder;
             } else {

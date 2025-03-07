@@ -41,7 +41,7 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
             return location.getWorld().spawn(location, ItemDisplay.class, spawned -> {
                 spawned.setGlowing(true);
                 spawned.setVisibleByDefault(false);
-                spawned.setGlowColorOverride(region.getOptions().getColor());
+                spawned.setGlowColorOverride(region.getOptions().getColor().getBukkitColor());
 
                 // Item data
                 spawned.setItemStack(new ItemStack(material));

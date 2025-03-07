@@ -18,6 +18,6 @@ public class RegionOptions {
      * The color of the region.
      */
     @Builder.Default
-    @NotNull Color color = Color.WHITE;
+    @NotNull RegionColor color = RegionColor.WHITE;
 
 }

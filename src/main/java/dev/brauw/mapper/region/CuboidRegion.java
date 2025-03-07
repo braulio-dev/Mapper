@@ -78,4 +78,10 @@ public class CuboidRegion implements Region {
     public World getWorld() {
         return min.getWorld();
     }
+
+    @Override
+    public void setWorld(World world) {
+        min.setWorld(world);
+        max.setWorld(world);
+    }
 }

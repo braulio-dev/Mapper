@@ -76,6 +76,12 @@ public interface Region {
     World getWorld();
 
     /**
+     * Set the world
+     * @param world the world this region is in
+     */
+    void setWorld(World world);
+
+    /**
      * Enum representing the different types of regions.
      */
     enum RegionType {

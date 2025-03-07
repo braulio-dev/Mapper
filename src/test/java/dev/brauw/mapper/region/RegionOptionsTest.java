@@ -10,7 +10,7 @@ public class RegionOptionsTest {
 
     @Test
     void createsRegionOptionsWithSpecificColor() {
-        Color color = Color.RED;
+        RegionColor color = RegionColor.RED;
         RegionOptions options = RegionOptions.builder()
                 .color(color)
                 .build();
@@ -22,7 +22,7 @@ public class RegionOptionsTest {
     void usesWhiteColorByDefault() {
         RegionOptions options = RegionOptions.builder().build();
 
-        assertEquals(Color.WHITE, options.getColor());
+        assertEquals(RegionColor.WHITE, options.getColor());
     }
 
     @Test
@@ -36,7 +36,7 @@ public class RegionOptionsTest {
 
     @Test
     void builderCreatesEqualObjectsWithSameColor() {
-        Color color = Color.BLUE;
+        RegionColor color = RegionColor.BLUE;
         RegionOptions options1 = RegionOptions.builder().color(color).build();
         RegionOptions options2 = RegionOptions.builder().color(color).build();
 

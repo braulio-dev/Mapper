@@ -59,4 +59,9 @@ public class PointRegion implements Region {
     public World getWorld() {
         return location.getWorld();
     }
+
+    @Override
+    public void setWorld(World world) {
+        location.setWorld(world);
+    }
 }

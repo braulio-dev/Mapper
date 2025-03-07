@@ -65,4 +65,9 @@ public class PolygonRegion implements Region {
     public World getWorld() {
         return children.getFirst().getWorld();
     }
+
+    @Override
+    public void setWorld(World world) {
+        children.forEach(region -> region.setWorld(world));
+    }
 }

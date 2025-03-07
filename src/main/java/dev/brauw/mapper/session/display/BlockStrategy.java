@@ -48,7 +48,7 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
             return center.getWorld().spawn(center, BlockDisplay.class, spawned -> {
                 spawned.setGlowing(true);
                 spawned.setVisibleByDefault(false);
-                spawned.setGlowColorOverride(region.getOptions().getColor());
+                spawned.setGlowColorOverride(region.getOptions().getColor().getBukkitColor());
 
                 // Block data
                 spawned.setBlock(Material.TINTED_GLASS.createBlockData());
