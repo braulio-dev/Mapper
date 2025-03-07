@@ -9,11 +9,14 @@ import dev.brauw.mapper.session.SessionManager;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import lombok.AllArgsConstructor;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Sound;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.checkerframework.checker.units.qual.C;
 import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Default;
@@ -37,6 +40,10 @@ public class MapperCommand {
     @Command("help")
     public void help(CommandSourceStack source) {
         final CommandSender sender = source.getSender();
+        final List<TextComponent> strategies = List.of("json").stream()
+                .map(str -> Component.text(str, NamedTextColor.WHITE))
+                .toList();
+
         sender.sendMessage(prefix.append(Component.text("Help", NamedTextColor.GOLD)));
         sender.sendMessage(Component.text("● /mapper edit", NamedTextColor.WHITE)
                 .append(Component.text(" - Edit the regions in the world.", NamedTextColor.GRAY)));
@@ -44,6 +51,9 @@ public class MapperCommand {
                 .append(Component.text(" - Save the regions in your session. Defaults to JSON.", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("● /mapper discard", NamedTextColor.WHITE)
                 .append(Component.text(" - Discard your editing session.", NamedTextColor.GRAY)));
+        sender.sendMessage(Component.empty());
+        sender.sendMessage(Component.text("Available strategies: ")
+                .append(Component.join(JoinConfiguration.commas(true), strategies)));
     }
 
     @Command("edit")
