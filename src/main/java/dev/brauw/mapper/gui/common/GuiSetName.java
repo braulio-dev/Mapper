@@ -1,6 +1,5 @@
-package dev.brauw.mapper.gui.selector;
+package dev.brauw.mapper.gui.common;
 
-import dev.brauw.mapper.region.RegionOptions;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Material;
@@ -16,18 +15,19 @@ import xyz.xenondevs.invui.item.builder.ItemBuilder;
 import xyz.xenondevs.invui.item.impl.AbstractItem;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 public class GuiSetName extends AbstractGui {
 
     private final Runnable creator;
     private final AtomicReference<String> name;
     private final DoneButton doneButton;
-    private final RegionOptions.RegionOptionsBuilder builder;
+    private final Supplier<Material> materialSupplier;
 
-    public GuiSetName(AtomicReference<String> name, RegionOptions.RegionOptionsBuilder builder, Runnable creator) {
+    public GuiSetName(AtomicReference<String> name, Supplier<Material> materialSupplier, Runnable creator) {
         super(3, 1);
         this.creator = creator;
-        this.builder = builder;
+        this.materialSupplier = materialSupplier;
         this.name = name;
         this.doneButton = new DoneButton();
 
@@ -46,7 +46,7 @@ public class GuiSetName extends AbstractGui {
         @Override
         public ItemProvider getItemProvider() {
             if (!name.get().isEmpty()) {
-                ItemBuilder itemBuilder = new ItemBuilder(builder.build().getColor().getMaterial());
+                ItemBuilder itemBuilder = new ItemBuilder(materialSupplier.get());
                 itemBuilder.setDisplayName(new AdventureComponentWrapper(Component.text("Done!", NamedTextColor.GREEN)));
                 return itemBuilder;
             } else {

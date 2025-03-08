@@ -3,6 +3,9 @@ package dev.brauw.mapper.command;
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.export.ExportStrategy;
 import dev.brauw.mapper.export.JsonExportStrategy;
+import dev.brauw.mapper.gui.metadata.GuiMetadata;
+import dev.brauw.mapper.metadata.MapMetadata;
+import dev.brauw.mapper.metadata.MetadataManager;
 import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.session.EditSession;
 import dev.brauw.mapper.session.SessionManager;
@@ -14,6 +17,7 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Sound;
+import org.bukkit.World;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.incendo.cloud.annotations.Argument;
@@ -25,6 +29,7 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
+import java.util.stream.Stream;
 
 @AllArgsConstructor
 @Command("mapper")
@@ -43,9 +48,6 @@ public class MapperCommand {
     @Command("help")
     public void help(CommandSourceStack source) {
         final CommandSender sender = source.getSender();
-        final List<TextComponent> strategies = List.of("json").stream()
-                .map(str -> Component.text(str, NamedTextColor.WHITE))
-                .toList();
 
         sender.sendMessage(prefix.append(Component.text("Help", NamedTextColor.GOLD)));
         sender.sendMessage(Component.text("● /mapper edit", NamedTextColor.WHITE)
@@ -56,12 +58,8 @@ public class MapperCommand {
                 .append(Component.text(" - Export the regions to the plugin data folder. Defaults to JSON.", NamedTextColor.GRAY)));
         sender.sendMessage(Component.text("● /mapper discard", NamedTextColor.WHITE)
                 .append(Component.text(" - Discard your editing session.", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.empty());
         sender.sendMessage(Component.text("● /mapper metadata", NamedTextColor.WHITE)
                 .append(Component.text(" - Change this world's metadata.", NamedTextColor.GRAY)));
-        sender.sendMessage(Component.empty());
-        sender.sendMessage(Component.text("Available strategies: ")
-                .append(Component.join(JoinConfiguration.commas(true), strategies)));
     }
 
     @Command("edit")
@@ -144,9 +142,14 @@ public class MapperCommand {
             return;
         }
 
-        final ExportStrategy exportStrategy = this.mapperPlugin.getExportManager().getAvailableStrategies().get(strategy);
+        final ExportStrategy exportStrategy = this.mapperPlugin.getExportManager().getAvailableStrategies().get(strategy.toLowerCase());
         if (exportStrategy == null) {
             player.sendMessage(prefix.append(Component.text("Unknown export strategy.", NamedTextColor.RED)));
+            final List<TextComponent> strategies = mapperPlugin.getExportManager().getAvailableStrategies().keySet().stream()
+                    .map(str -> Component.text(str, NamedTextColor.WHITE))
+                    .toList();
+            sender.sendMessage(Component.text("Available strategies: ", NamedTextColor.GRAY)
+                    .append(Component.join(JoinConfiguration.commas(true), strategies)));
             player.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 0.4f);
             return;
         }
@@ -162,6 +165,22 @@ public class MapperCommand {
                 .append(Component.text("/exports/" + file.getName(), NamedTextColor.DARK_GREEN)));
         player.playSound(player, Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
         mapperPlugin.getSessionManager().endSession(player);
+    }
+
+    @Command("metadata")
+    public void metadata(CommandSourceStack source) {
+        final CommandSender sender = source.getSender();
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(prefix.append(Component.text("Only players can edit metadata.", NamedTextColor.RED)));
+            return;
+        }
+
+        final World world = player.getWorld();
+        final MetadataManager metadataManager = mapperPlugin.getMetadataManager();
+        final MapMetadata metadata = metadataManager.loadMetadata(world);
+
+        // Open metadata GUI
+        mapperPlugin.getGuiManager().openMetadataEditor(player, metadata);
     }
 
     @Command("discard")

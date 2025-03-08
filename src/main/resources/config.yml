@@ -1,0 +1,5 @@
+metadata:
+  default-map-name: "Unnamed Map"
+  available-gamemodes:
+    - "Capture The Flag"
+    - "Domination"
