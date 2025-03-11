@@ -4,6 +4,7 @@ plugins {
     id("java")
     id("io.freefair.lombok") version "8.12.2.1"
     id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("maven-publish")
 }
 
 group = "dev.brauw.mapper"
@@ -48,6 +49,25 @@ tasks.withType<ShadowJar> {
     archiveClassifier = ""
     from(sourceSets.main.get().output)
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+publishing {
+    publications {
+        create<MavenPublication>("Mapper") {
+            // Use the shadow JAR as the primary artifact
+            artifact(tasks["shadowJar"])
+
+            // Exclude the default JAR
+            artifact(tasks["jar"]) {
+                classifier = "original"
+            }
+
+            pom {
+                name.set("Mapper")
+                description.set("Mapper plugin")
+            }
+        }
+    }
 }
 
 tasks.named<Copy>("processResources") {
