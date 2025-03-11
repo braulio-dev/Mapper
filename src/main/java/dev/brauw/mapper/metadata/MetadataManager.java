@@ -28,25 +28,33 @@ public class MetadataManager {
         this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
-    public MapMetadata loadMetadata(World world) {
-        File metadataFile = new File(world.getWorldFolder(), "metadata.json");
+    public MapMetadata loadMetadata(File worldFolder) {
+        File metadataFile = new File(worldFolder, "metadata.json");
         if (metadataFile.exists()) {
             try (FileReader reader = new FileReader(metadataFile)) {
                 return objectMapper.readValue(reader, MapMetadata.class);
             } catch (IOException e) {
-                log.log(Level.SEVERE, "Failed to load metadata for world " + world.getName(), e);
+                log.log(Level.SEVERE, "Failed to load metadata for world " + worldFolder.getName(), e);
             }
         }
         return createDefaultMetadata();
     }
 
-    public void saveMetadata(World world, MapMetadata metadata) {
-        File metadataFile = new File(world.getWorldFolder(), "metadata.json");
+    public MapMetadata loadMetadata(World world) {
+        return loadMetadata(world.getWorldFolder());
+    }
+
+    public void saveMetadata(File worldFolder, MapMetadata metadata) {
+        File metadataFile = new File(worldFolder, "metadata.json");
         try (FileWriter writer = new FileWriter(metadataFile)) {
             objectMapper.writeValue(writer, metadata);
         } catch (IOException e) {
-            log.log(Level.SEVERE, "Failed to save metadata for world " + world.getName(), e);
+            log.log(Level.SEVERE, "Failed to save metadata for world " + worldFolder.getName(), e);
         }
+    }
+
+    public void saveMetadata(World world, MapMetadata metadata) {
+        saveMetadata(world.getWorldFolder(), metadata);
     }
 
     public MapMetadata createDefaultMetadata() {

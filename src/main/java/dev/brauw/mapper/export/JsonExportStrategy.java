@@ -65,13 +65,13 @@ public class JsonExportStrategy implements ExportStrategy {
      * @param file the file to read from
      * @return the list of regions read from the file
      */
-    public List<Region> read(File file) {
+    public RegionCollection read(File file) {
         try {
             if (!file.exists()) {
-                return Collections.emptyList();
+                return new RegionCollection();
             }
 
-            List<Region> regions = objectMapper.readValue(
+            RegionCollection regions = objectMapper.readValue(
                     file,
                     RegionCollection.class
             );
@@ -80,7 +80,7 @@ public class JsonExportStrategy implements ExportStrategy {
             return regions;
         } catch (IOException e) {
             log.severe("Failed to read regions from JSON: " + e.getMessage());
-            return Collections.emptyList();
+            return new RegionCollection();
         }
     }
 
