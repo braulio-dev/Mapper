@@ -20,30 +20,25 @@ import org.incendo.cloud.paper.PaperCommandManager;
 
 import java.util.List;
 
+@Getter
 @CustomLog
 public class MapperPlugin extends JavaPlugin {
 
     @Getter
+    private static MapperPlugin instance;
     private SessionManager sessionManager;
-    @Getter
     private ExportManager exportManager;
-    @Getter
     private PaperCommandManager<CommandSourceStack> commandManager;
-    @Getter
     private ListenerManager listenerManager;
-    @Getter
     private MetadataManager metadataManager;
-    @Getter
     private RegionToolManager regionToolManager;
-    @Getter
     private SelectionHandler selectionHandler;
-    @Getter
     private GuiManager guiManager;
-    @Getter
     private BukkitTaskScheduler taskScheduler;
 
     @Override
     public void onEnable() {
+        instance = this;
         saveDefaultConfig();
         BukkitLoggerFactory.initialize(this);
 
