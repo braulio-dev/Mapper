@@ -43,6 +43,10 @@ public class PointRegion implements Region {
         this.options = options;
     }
 
+    public Location getLocation() {
+        return location.clone();
+    }
+
     @Override
     public boolean contains(Location location) {
         return this.getLocation().x() == location.x()

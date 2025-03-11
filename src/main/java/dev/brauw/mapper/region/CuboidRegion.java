@@ -79,6 +79,14 @@ public class CuboidRegion implements Region {
         return min.getWorld();
     }
 
+    public Location getMin() {
+        return min.clone();
+    }
+
+    public Location getMax() {
+        return max.clone();
+    }
+
     @Override
     public void setWorld(World world) {
         min.setWorld(world);
