@@ -159,7 +159,7 @@ public class MapperCommand {
             folder.mkdirs();
         }
 
-        final File file = new File(folder, dateFormat.format(new Date()));
+        final File file = new File(folder, dateFormat.format(new Date()) + ".json");
         exportStrategy.export(regions, file);
         sender.sendMessage(prefix.append(Component.text("Regions saved to: ", NamedTextColor.GREEN))
                 .append(Component.text("/exports/" + file.getName(), NamedTextColor.DARK_GREEN)));
