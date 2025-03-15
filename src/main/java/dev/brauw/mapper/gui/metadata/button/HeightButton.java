@@ -19,10 +19,11 @@ import xyz.xenondevs.invui.item.builder.ItemBuilder;
 import xyz.xenondevs.invui.item.impl.AbstractItem;
 import xyz.xenondevs.invui.window.AnvilWindow;
 
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 @RequiredArgsConstructor
-public class NameButton extends AbstractItem {
+public class HeightButton extends AbstractItem {
 
     private final BukkitTaskScheduler taskScheduler;
     private final GuiManager guiManager;
@@ -30,9 +31,9 @@ public class NameButton extends AbstractItem {
 
     @Override
     public ItemProvider getItemProvider() {
-        return new ItemBuilder(Material.NAME_TAG)
-                .setDisplayName(new AdventureComponentWrapper(Component.text("Map Name: ", NamedTextColor.GOLD)
-                        .append(Component.text(metadata.getName(), NamedTextColor.WHITE))))
+        return new ItemBuilder(Material.OAK_STAIRS)
+                .setDisplayName(new AdventureComponentWrapper(Component.text("Max Height: ", NamedTextColor.GOLD)
+                        .append(Component.text(metadata.getMaxHeight(), NamedTextColor.WHITE))))
                 .addLoreLines(new AdventureComponentWrapper(Component.text("Click to change", NamedTextColor.GRAY)));
     }
 
@@ -43,15 +44,19 @@ public class NameButton extends AbstractItem {
     }
 
     private void openRenameGui(Player player) {
-        AtomicReference<String> name = new AtomicReference<>(metadata.getName());
-        final GuiSetName gui = new GuiSetName(name, () -> Material.PAPER, () -> {
-            metadata.setName(name.get());
+        AtomicReference<Integer> maxHeight = new AtomicReference<>(metadata.getMaxHeight());
+        final GuiSet<Integer> gui = new GuiSet<>(maxHeight, () -> Material.PAPER, () -> {
+            metadata.setMaxHeight(maxHeight.get());
             taskScheduler.scheduleTask(() -> guiManager.openMetadataEditor(player, metadata), 1L);
-        });
+        }, value -> value > 0);
         AnvilWindow.single()
                 .setGui(gui)
                 .addRenameHandler(updated -> {
-                    name.set(updated);
+                    try {
+                        maxHeight.set(Integer.valueOf(updated));
+                    } catch (NumberFormatException ignored) {
+                        maxHeight.set(-1);
+                    }
                     gui.update();
                 })
                 .addCloseHandler(() -> {

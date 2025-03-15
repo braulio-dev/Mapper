@@ -1,6 +1,7 @@
 package dev.brauw.mapper.gui;
 
 import dev.brauw.mapper.MapperPlugin;
+import dev.brauw.mapper.gui.common.GuiSet;
 import dev.brauw.mapper.gui.common.GuiSetName;
 import dev.brauw.mapper.gui.metadata.GuiMetadata;
 import dev.brauw.mapper.gui.selector.GuiColorSelect;

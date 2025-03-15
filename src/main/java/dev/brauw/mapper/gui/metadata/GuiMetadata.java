@@ -3,10 +3,7 @@ package dev.brauw.mapper.gui.metadata;
 import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.gui.button.BackItem;
 import dev.brauw.mapper.gui.button.ForwardItem;
-import dev.brauw.mapper.gui.metadata.button.AddAuthorButton;
-import dev.brauw.mapper.gui.metadata.button.AuthorButton;
-import dev.brauw.mapper.gui.metadata.button.NameButton;
-import dev.brauw.mapper.gui.metadata.button.SaveButton;
+import dev.brauw.mapper.gui.metadata.button.*;
 import dev.brauw.mapper.metadata.MapMetadata;
 import dev.brauw.mapper.metadata.MetadataManager;
 import dev.brauw.mapper.util.BukkitTaskScheduler;
@@ -40,13 +37,14 @@ public class GuiMetadata extends AbstractPagedGui<AuthorButton> {
 
         Structure structure = new Structure(
             "# # # # # # # # #",
-            "# n g # # # # + #",
+            "# n g h # # # + #",
             "# a a a a a a a #",
             "# # # < s > # # #"
         );
         
         structure.addIngredient('#', new SimpleItem(new ItemBuilder(Material.BLACK_STAINED_GLASS_PANE).setDisplayName(" ")));
         structure.addIngredient('n', new NameButton(taskScheduler, guiManager, metadata));
+        structure.addIngredient('h', new HeightButton(taskScheduler, guiManager, metadata));
         structure.addIngredient('+', new AddAuthorButton(taskScheduler, guiManager, metadata));
         structure.addIngredient('s', new SaveButton(this));
         structure.addIngredient('a', Markers.CONTENT_LIST_SLOT_HORIZONTAL);

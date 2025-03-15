@@ -40,7 +40,7 @@ public class RegionToolListener implements Listener {
             handleCuboidWand(event, session);
         }
         else if (toolManager.isTool(item, ToolType.POINT_REGION_CREATOR) &&
-                event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+                event.getAction().isRightClick()) {
             event.setCancelled(true);
             selectionHandler.createPointRegion(session, event.getInteractionPoint());
         }

@@ -17,4 +17,5 @@ public class MapMetadata {
     private @NotNull String name;
     private @NotNull Set<@NotNull UUID> authors;
     private @NotNull String gameMode;
+    @Builder.Default private int maxHeight = 100;
 }

@@ -60,7 +60,8 @@ public class MetadataManager {
     public MapMetadata createDefaultMetadata() {
         return new MapMetadata(defaultName,
                 new HashSet<>(),
-                gameModes.isEmpty() ? "Unknown" : gameModes.getFirst());
+                gameModes.isEmpty() ? "Unknown" : gameModes.getFirst(),
+                100);
     }
 
     public List<String> getGameModes() {

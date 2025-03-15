@@ -126,13 +126,19 @@ public class SelectionHandler {
      * @param location The location at which to create the point region.
      */
     public void createPointRegion(EditSession session, Location location) {
-        if (location == null) return;
+        final Player player = session.getOwner();
+        final Location target = player.isSneaking() ? player.getLocation() : location;
+
+        if (target == null) {
+            return;
+        }
+
         guiManager.openRegionCreateGui(session, (name, options) -> {
             if (!validate(session.getOwner(), name, options)) {
                 return;
             }
 
-            PointRegion region = new PointRegion(name, location, options);
+            PointRegion region = new PointRegion(name, target, options);
             session.addRegion(region);
         }, () -> {
             // Clear selections if GUI is closed
