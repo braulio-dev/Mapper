@@ -63,13 +63,10 @@ public class RegionToolListener implements Listener {
     private void handleCuboidWand(PlayerInteractEvent event, EditSession session) {
         if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
             selectionHandler.setFirstPosition(session, event);
-        }
-        else if (event.getAction().isRightClick()) {
-            if (event.getPlayer().isSneaking()) {
-                selectionHandler.createCuboidRegion(session);
-            } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-                selectionHandler.setSecondPosition(session, event);
-            }
+        } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            selectionHandler.setSecondPosition(session, event);
+        } else if (event.getAction() == Action.RIGHT_CLICK_AIR && event.getPlayer().isSneaking()) {
+            selectionHandler.createCuboidRegion(session);
         }
     }
 

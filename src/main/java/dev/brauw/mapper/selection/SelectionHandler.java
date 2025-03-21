@@ -55,6 +55,7 @@ public class SelectionHandler {
         Player player = event.getPlayer();
         Location location = getTargetPoint(player);
         if (location == null) return;
+        if (player.isSneaking()) location = location.toCenterLocation();
 
         getSelection(player).setFirstCorner(location);
 
@@ -74,6 +75,7 @@ public class SelectionHandler {
         Player player = event.getPlayer();
         Location location = getTargetPoint(player);
         if (location == null) return;
+        if (player.isSneaking()) location = location.toCenterLocation();
 
         getSelection(player).setSecondCorner(location);
 
