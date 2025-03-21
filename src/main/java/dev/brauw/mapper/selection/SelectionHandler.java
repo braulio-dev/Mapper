@@ -53,9 +53,8 @@ public class SelectionHandler {
      */
     public void setFirstPosition(EditSession session, PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        Location location = getTargetPoint(player);
+        Location location = getTargetBlock(player);
         if (location == null) return;
-        if (player.isSneaking()) location = location.toCenterLocation();
 
         getSelection(player).setFirstCorner(location);
 
@@ -73,9 +72,8 @@ public class SelectionHandler {
      */
     public void setSecondPosition(EditSession session, PlayerInteractEvent event) {
         Player player = event.getPlayer();
-        Location location = getTargetPoint(player);
+        Location location = getTargetBlock(player);
         if (location == null) return;
-        if (player.isSneaking()) location = location.toCenterLocation();
 
         getSelection(player).setSecondCorner(location);
 
@@ -205,6 +203,22 @@ public class SelectionHandler {
                             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
                         }
                 );
+    }
+
+    private static @Nullable Location getTargetBlock(Player player) {
+        RayTraceResult result = player.getWorld().rayTraceBlocks(
+                player.getEyeLocation(),
+                player.getLocation().getDirection(),
+                Objects.requireNonNull(player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)).getValue() + 0.2,
+                FluidCollisionMode.NEVER,
+                true
+        );
+
+        if (result == null || result.getHitBlock() == null) {
+            return null;
+        }
+
+        return result.getHitBlock().getLocation().toCenterLocation();
     }
 
     private static @Nullable Location getTargetPoint(Player player) {
