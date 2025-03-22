@@ -25,7 +25,9 @@ public class PointRegion implements Region {
         this.options = options;
         this.id = UUID.randomUUID();
         this.name = name;
-        this.location = location;
+        this.location = location.clone();
+        this.location.setPitch(0);
+        this.location.setYaw(0);
     }
 
     public PointRegion(String name, Location location) {

@@ -218,7 +218,8 @@ public class SelectionHandler {
             return null;
         }
 
-        return result.getHitBlock().getLocation().toCenterLocation();
+        final Location location = result.getHitBlock().getLocation();
+        return player.isSneaking() ? location.toCenterLocation() : location;
     }
 
     private static @Nullable Location getTargetPoint(Player player) {
