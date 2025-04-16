@@ -5,10 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.CustomLog;
 import org.bukkit.World;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import java.io.*;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -28,19 +25,34 @@ public class MetadataManager {
         this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
-    public MapMetadata loadMetadata(File metadataFile) throws IllegalArgumentException {
-        if (metadataFile.exists()) {
-            try (FileReader reader = new FileReader(metadataFile)) {
+    public MapMetadata loadMetadata(InputStream metadataFile) throws IllegalArgumentException {
+        if (metadataFile != null) {
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(metadataFile))) {
                 return objectMapper.readValue(reader, MapMetadata.class);
             } catch (IOException e) {
-                log.log(Level.SEVERE, "Failed to load metadata from file: " + metadataFile.getAbsolutePath(), e);
+                log.log(Level.SEVERE, "Failed to load metadata from input stream", e);
             }
         }
-        throw new IllegalArgumentException("Metadata file not found: " + metadataFile.getAbsolutePath());
+        throw new IllegalArgumentException("Metadata file not found");
+    }
+
+    public MapMetadata loadMetadata(File metadataFile) throws IllegalArgumentException {
+        if (metadataFile != null && metadataFile.exists()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(metadataFile))) {
+                return objectMapper.readValue(reader, MapMetadata.class);
+            } catch (IOException e) {
+                log.log(Level.SEVERE, "Failed to load metadata from file " + metadataFile.getName(), e);
+            }
+        }
+        throw new IllegalArgumentException("Metadata file not found");
     }
 
     public MapMetadata loadMetadata(World world) {
-        return loadMetadata(world.getWorldFolder());
+        File metadataFile = new File(world.getWorldFolder(), "metadata.json");
+        if (metadataFile.exists()) {
+            return loadMetadata(metadataFile);
+        }
+        throw new IllegalArgumentException("Metadata file not found in world " + world.getName());
     }
 
     public void saveMetadata(File worldFolder, MapMetadata metadata) {

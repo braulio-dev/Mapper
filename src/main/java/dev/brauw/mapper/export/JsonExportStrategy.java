@@ -14,6 +14,7 @@ import org.bukkit.World;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.List;
 
@@ -68,6 +69,30 @@ public class JsonExportStrategy implements ExportStrategy {
     public RegionCollection read(File file) {
         try {
             if (!file.exists()) {
+                return new RegionCollection();
+            }
+
+            RegionCollection regions = objectMapper.readValue(
+                    file,
+                    RegionCollection.class
+            );
+
+            log.info("Read " + regions.size() + " regions");
+            return regions;
+        } catch (IOException e) {
+            log.severe("Failed to read regions from JSON: " + e.getMessage());
+            return new RegionCollection();
+        }
+    }
+
+    /**
+     * Reads regions from a World with a dataPoints.json file and a dataTypes.json file.
+     * @param file the file to read from
+     * @return the list of regions read from the file
+     */
+    public RegionCollection read(InputStream file) {
+        try {
+            if (file == null) {
                 return new RegionCollection();
             }
 
