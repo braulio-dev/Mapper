@@ -28,16 +28,15 @@ public class MetadataManager {
         this.objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
     }
 
-    public MapMetadata loadMetadata(File worldFolder) {
-        File metadataFile = new File(worldFolder, "metadata.json");
+    public MapMetadata loadMetadata(File metadataFile) throws IllegalArgumentException {
         if (metadataFile.exists()) {
             try (FileReader reader = new FileReader(metadataFile)) {
                 return objectMapper.readValue(reader, MapMetadata.class);
             } catch (IOException e) {
-                log.log(Level.SEVERE, "Failed to load metadata for world " + worldFolder.getName(), e);
+                log.log(Level.SEVERE, "Failed to load metadata from file: " + metadataFile.getAbsolutePath(), e);
             }
         }
-        return createDefaultMetadata();
+        throw new IllegalArgumentException("Metadata file not found: " + metadataFile.getAbsolutePath());
     }
 
     public MapMetadata loadMetadata(World world) {

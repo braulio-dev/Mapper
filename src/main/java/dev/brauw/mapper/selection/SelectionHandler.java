@@ -16,6 +16,7 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
@@ -133,6 +134,8 @@ public class SelectionHandler {
             return;
         }
 
+        target.setYaw(0);
+        target.setPitch(0);
         guiManager.openRegionCreateGui(session, (name, options) -> {
             if (!validate(session.getOwner(), name, options)) {
                 return;
@@ -189,7 +192,7 @@ public class SelectionHandler {
         if (location == null) return;
 
         session.getRegions().stream()
-                .filter(region -> region.contains(location) || (region instanceof PointRegion point) && point.getLocation().distance(location) < 0.2)
+                .filter(region -> region.contains(location) || (region instanceof PointRegion point && point.getLocation().distance(location) < 0.2))
                 .findFirst()
                 .ifPresentOrElse(
                         region -> {
@@ -218,8 +221,7 @@ public class SelectionHandler {
             return null;
         }
 
-        final Location location = result.getHitBlock().getLocation();
-        return player.isSneaking() ? location.toCenterLocation() : location;
+        return player.isSneaking() ? result.getHitBlock().getLocation().toCenterLocation() : result.getHitPosition().toLocation(result.getHitBlock().getWorld());
     }
 
     private static @Nullable Location getTargetPoint(Player player) {
