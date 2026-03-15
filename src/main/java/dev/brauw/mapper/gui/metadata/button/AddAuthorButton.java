@@ -1,7 +1,6 @@
 package dev.brauw.mapper.gui.metadata.button;
 
 import dev.brauw.mapper.gui.GuiManager;
-import dev.brauw.mapper.gui.common.GuiSet;
 import dev.brauw.mapper.gui.common.GuiSetName;
 import dev.brauw.mapper.metadata.MapMetadata;
 import dev.brauw.mapper.util.BukkitTaskScheduler;

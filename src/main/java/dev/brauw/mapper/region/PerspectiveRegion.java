@@ -1,12 +1,8 @@
 package dev.brauw.mapper.region;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.annotation.JsonTypeName;
-import lombok.Builder;
 import lombok.Getter;
-import lombok.extern.jackson.Jacksonized;
 import org.bukkit.Location;
 
 import java.util.UUID;

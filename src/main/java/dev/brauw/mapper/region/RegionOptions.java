@@ -3,7 +3,6 @@ package dev.brauw.mapper.region;
 import lombok.Builder;
 import lombok.Value;
 import lombok.extern.jackson.Jacksonized;
-import org.bukkit.Color;
 import org.jetbrains.annotations.NotNull;
 
 /**

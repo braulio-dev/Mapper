@@ -2,8 +2,8 @@ package dev.brauw.mapper.selection;
 
 import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.region.CuboidRegion;
-import dev.brauw.mapper.region.PointRegion;
 import dev.brauw.mapper.region.PerspectiveRegion;
+import dev.brauw.mapper.region.PointRegion;
 import dev.brauw.mapper.region.RegionOptions;
 import dev.brauw.mapper.session.EditSession;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +16,6 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.RayTraceResult;
-import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;

@@ -2,7 +2,6 @@ package dev.brauw.mapper.gui.metadata.button;
 
 import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.gui.common.GuiSet;
-import dev.brauw.mapper.gui.common.GuiSetName;
 import dev.brauw.mapper.metadata.MapMetadata;
 import dev.brauw.mapper.util.BukkitTaskScheduler;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +18,6 @@ import xyz.xenondevs.invui.item.builder.ItemBuilder;
 import xyz.xenondevs.invui.item.impl.AbstractItem;
 import xyz.xenondevs.invui.window.AnvilWindow;
 
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 @RequiredArgsConstructor

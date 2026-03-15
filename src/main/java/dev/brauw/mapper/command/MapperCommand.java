@@ -3,7 +3,6 @@ package dev.brauw.mapper.command;
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.export.ExportStrategy;
 import dev.brauw.mapper.export.JsonExportStrategy;
-import dev.brauw.mapper.gui.metadata.GuiMetadata;
 import dev.brauw.mapper.metadata.MapMetadata;
 import dev.brauw.mapper.metadata.MetadataManager;
 import dev.brauw.mapper.region.Region;
@@ -29,7 +28,6 @@ import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Stream;
 
 @AllArgsConstructor
 @Command("mapper")
