@@ -2,14 +2,22 @@ package dev.brauw.mapper.session;
 
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.Region;
-import dev.brauw.mapper.session.display.*;
+import dev.brauw.mapper.session.display.ArmorStandStrategy;
+import dev.brauw.mapper.session.display.BlockStrategy;
+import dev.brauw.mapper.session.display.ItemStrategy;
+import dev.brauw.mapper.session.display.PolygonStrategy;
+import dev.brauw.mapper.session.display.RegionDisplayStrategy;
 import dev.brauw.mapper.session.event.SessionCreateEvent;
 import dev.brauw.mapper.session.event.SessionEndEvent;
 import lombok.CustomLog;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**

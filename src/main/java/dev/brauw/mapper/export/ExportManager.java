@@ -1,13 +1,9 @@
 package dev.brauw.mapper.export;
 
 import dev.brauw.mapper.MapperPlugin;
-import dev.brauw.mapper.region.Region;
 import lombok.CustomLog;
 
-import java.io.File;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**

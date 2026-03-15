@@ -1,6 +1,5 @@
 package dev.brauw.mapper.tool;
 
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
 import java.util.HashMap;
