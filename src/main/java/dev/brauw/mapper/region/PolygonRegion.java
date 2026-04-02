@@ -1,15 +1,14 @@
 package dev.brauw.mapper.region;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonTypeName;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.jackson.Jacksonized;
 import org.bukkit.Location;
 import org.bukkit.World;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -24,15 +23,7 @@ public class PolygonRegion implements Region {
     private final List<CuboidRegion> children;
 
     public PolygonRegion(String name, List<CuboidRegion> children, RegionOptions options) {
-        this.name = name;
-        this.id = UUID.randomUUID();
-        this.options = options;
-
-        // make sure they're all in the same world
-        Preconditions.checkArgument(!children.isEmpty());
-        final World world = children.getFirst().getWorld();
-        Preconditions.checkArgument(children.stream().allMatch(region -> region.getWorld().equals(world)));
-        this.children = Collections.unmodifiableList(children);
+        this(UUID.randomUUID(), name, children, options);
     }
 
     public PolygonRegion(String name, List<CuboidRegion> children) {
@@ -41,14 +32,14 @@ public class PolygonRegion implements Region {
 
     @JsonCreator
     public PolygonRegion(
-            UUID id,
-            String name,
-            List<CuboidRegion> children,
-            RegionOptions options) {
+            @JsonProperty("id") UUID id,
+            @JsonProperty("name") String name,
+            @JsonProperty("children") List<CuboidRegion> children,
+            @JsonProperty("options") RegionOptions options) {
         this.id = id;
         this.name = name;
-        this.children = Collections.unmodifiableList(children);
         this.options = options;
+        this.children = Collections.unmodifiableList(withOptions(children, options));
     }
 
     @Override
@@ -69,5 +60,19 @@ public class PolygonRegion implements Region {
     @Override
     public void setWorld(World world) {
         children.forEach(region -> region.setWorld(world));
+    }
+
+    private static List<CuboidRegion> withOptions(List<CuboidRegion> children, RegionOptions options) {
+        Preconditions.checkArgument(children != null && !children.isEmpty());
+        Preconditions.checkNotNull(options);
+
+        World world = children.getFirst().getWorld();
+        Preconditions.checkArgument(children.stream().allMatch(region -> region.getWorld().equals(world)));
+
+        List<CuboidRegion> normalized = new ArrayList<>(children.size());
+        for (CuboidRegion child : children) {
+            normalized.add(new CuboidRegion(child.getId(), child.getName(), child.getMin(), child.getMax(), options));
+        }
+        return normalized;
     }
 }

@@ -3,6 +3,7 @@ package dev.brauw.mapper.selection;
 import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.region.CuboidRegion;
 import dev.brauw.mapper.region.PointRegion;
+import dev.brauw.mapper.region.PolygonRegion;
 import dev.brauw.mapper.region.PerspectiveRegion;
 import dev.brauw.mapper.region.RegionOptions;
 import dev.brauw.mapper.session.EditSession;
@@ -16,9 +17,10 @@ import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.RayTraceResult;
-import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.WeakHashMap;
@@ -33,6 +35,7 @@ public class SelectionHandler {
 
     private final GuiManager guiManager;
     private final Map<Player, SelectionCorners> selections = new WeakHashMap<>();
+    private final Map<Player, List<CuboidRegion>> polygonSelections = new WeakHashMap<>();
 
     /**
      * Retrieves the SelectionCorners object for a given player.
@@ -43,6 +46,19 @@ public class SelectionHandler {
      */
     private SelectionCorners getSelection(Player player) {
         return selections.computeIfAbsent(player, key -> new SelectionCorners());
+    }
+
+    private List<CuboidRegion> getPolygonSelection(Player player) {
+        return polygonSelections.computeIfAbsent(player, key -> new ArrayList<>());
+    }
+
+    private void clearSelections(Player player) {
+        selections.remove(player);
+        polygonSelections.remove(player);
+    }
+
+    public boolean hasCompleteSelection(EditSession session) {
+        return getSelection(session.getOwner()).isComplete();
     }
 
     /**
@@ -111,12 +127,58 @@ public class SelectionHandler {
             CuboidRegion region = new CuboidRegion(name, first, second, options);
             session.addRegion(region);
 
-            // Clear selections after creating region
-            selections.remove(player);
+            clearSelections(player);
         }, () -> {
-            // Clear selections if GUI is closed
-            selections.remove(player);
+            clearSelections(player);
         });
+    }
+
+    public void addPolygonChild(EditSession session) {
+        Player player = session.getOwner();
+        SelectionCorners selection = getSelection(player);
+        if (!selection.isComplete()) {
+            player.sendMessage(Component.text("You need to set both positions before adding a polygon part.", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        Location first = selection.getFirstCorner();
+        Location second = selection.getSecondCorner();
+        List<CuboidRegion> children = getPolygonSelection(player);
+        children.add(new CuboidRegion("polygon-child-" + children.size(), first, second));
+        selections.remove(player);
+
+        player.sendMessage(Component.text("Added polygon part ", NamedTextColor.GREEN)
+                .append(Component.text("#" + children.size(), NamedTextColor.YELLOW)));
+        player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_STEP, 1.0f, 1.2f);
+    }
+
+    public void createPolygonRegion(EditSession session) {
+        Player player = session.getOwner();
+        List<CuboidRegion> children = polygonSelections.get(player);
+        if (children == null || children.isEmpty()) {
+            player.sendMessage(Component.text("Add at least one cuboid part before creating a polygon region.", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        if (getSelection(player).isComplete()) {
+            player.sendMessage(Component.text("Finish the current cuboid part first by sneaking and right-clicking again.", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        List<CuboidRegion> snapshot = List.copyOf(children);
+        player.sendMessage(Component.text("Creating polygon region...", NamedTextColor.YELLOW));
+        guiManager.openRegionCreateGui(session, (name, options) -> {
+            if (!validate(player, name, options)) {
+                return;
+            }
+
+            PolygonRegion region = new PolygonRegion(name, snapshot, options);
+            session.addRegion(region);
+            clearSelections(player);
+        }, () -> clearSelections(player));
     }
 
     /**
@@ -144,8 +206,7 @@ public class SelectionHandler {
             PointRegion region = new PointRegion(name, target, options);
             session.addRegion(region);
         }, () -> {
-            // Clear selections if GUI is closed
-            selections.remove(session.getOwner());
+            clearSelections(session.getOwner());
         });
     }
 
@@ -173,8 +234,7 @@ public class SelectionHandler {
             PerspectiveRegion region = new PerspectiveRegion(name, target, options);
             session.addRegion(region);
         }, () -> {
-            // Clear selections if GUI is closed
-            selections.remove(player);
+            clearSelections(player);
         });
     }
 

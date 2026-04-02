@@ -6,9 +6,6 @@ import dev.brauw.mapper.session.EditSession;
 import dev.brauw.mapper.tool.RegionToolManager;
 import dev.brauw.mapper.tool.ToolRegistry.ToolType;
 import lombok.RequiredArgsConstructor;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -56,7 +53,7 @@ public class RegionToolListener implements Listener {
         }
         else if (toolManager.isTool(item, ToolType.POLYGON_WAND)) {
             event.setCancelled(true);
-            notifyNotImplemented(player);
+            handlePolygonWand(event, session);
         }
     }
 
@@ -70,8 +67,20 @@ public class RegionToolListener implements Listener {
         }
     }
 
-    private void notifyNotImplemented(Player player) {
-        player.sendActionBar(Component.text("This tool is not implemented yet.", NamedTextColor.DARK_RED));
-        player.playSound(player, Sound.ENTITY_FIREWORK_ROCKET_TWINKLE_FAR, 1.0f, 2f);
+    private void handlePolygonWand(PlayerInteractEvent event, EditSession session) {
+        if (event.getAction().isRightClick() && event.getPlayer().isSneaking()) {
+            if (selectionHandler.hasCompleteSelection(session)) {
+                selectionHandler.addPolygonChild(session);
+            } else {
+                selectionHandler.createPolygonRegion(session);
+            }
+            return;
+        }
+
+        if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
+            selectionHandler.setFirstPosition(session, event);
+        } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
+            selectionHandler.setSecondPosition(session, event);
+        }
     }
 }

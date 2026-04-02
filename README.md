@@ -18,7 +18,7 @@ Mapper allows server administrators and world editors to define various types of
     - Point Regions
     - Perspective Regions
     - Cuboid Regions
-    - Polygon Regions (coming soon)
+    - Polygon Regions
 
 - **Intuitive Tools**
     - Special tools for creating each type of region
@@ -45,17 +45,25 @@ Mapper allows server administrators and world editors to define various types of
 1. Start an editing session with `/mapper edit`
 2. Use the provided tools to create regions:
     - Beacon: Point Region Creator
-    - Spyglass: Perspective Region Creator
-    - Golden Axe: Cuboid Region Wand
-    - Golden Hoe: Polygon Region Wand (not yet implemented)
+    - Armor Stand: Perspective Region Creator
+    - Blaze Rod: Cuboid Region Wand
+    - Breeze Rod: Polygon Region Wand
     - Shears: Region Deletion Tool
 
 ### Creating a Cuboid Region
 
-1. Left-click with the Golden Axe to set the first corner
+1. Left-click with the Blaze Rod to set the first corner
 2. Right-click to set the second corner
 3. Shift + Right-click to complete the region
 4. Enter a name and select a color for your region
+
+### Creating a Polygon Region
+
+1. Left-click with the Breeze Rod to set the first corner of a polygon part
+2. Right-click to set the second corner
+3. Shift + Right-click to add that cuboid part to the polygon
+4. Repeat steps 1-3 for each additional part
+5. Shift + Right-click again without an active corner pair to finalize the polygon
 
 ### Saving Your Work
 
