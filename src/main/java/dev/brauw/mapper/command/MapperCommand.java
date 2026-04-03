@@ -177,7 +177,7 @@ public class MapperCommand {
 
         final World world = player.getWorld();
         final MetadataManager metadataManager = mapperPlugin.getMetadataManager();
-        final MapMetadata metadata = metadataManager.loadMetadata(world);
+        final MapMetadata metadata = metadataManager.loadOrCreateMetadata(world);
 
         // Open metadata GUI
         mapperPlugin.getGuiManager().openMetadataEditor(player, metadata);

@@ -11,6 +11,7 @@ import org.bukkit.World;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Getter
@@ -67,7 +68,7 @@ public class PolygonRegion implements Region {
         Preconditions.checkNotNull(options);
 
         World world = children.getFirst().getWorld();
-        Preconditions.checkArgument(children.stream().allMatch(region -> region.getWorld().equals(world)));
+        Preconditions.checkArgument(children.stream().allMatch(region -> Objects.equals(region.getWorld(), world)));
 
         List<CuboidRegion> normalized = new ArrayList<>(children.size());
         for (CuboidRegion child : children) {

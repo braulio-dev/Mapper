@@ -9,6 +9,7 @@ import dev.brauw.mapper.export.serializer.LocationDeserializer;
 import dev.brauw.mapper.export.serializer.LocationSerializer;
 import dev.brauw.mapper.region.Region;
 import lombok.CustomLog;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 
@@ -76,6 +77,7 @@ public class JsonExportStrategy implements ExportStrategy {
                     file,
                     RegionCollection.class
             );
+            applyWorldFromFile(regions, file);
 
             log.info("Read " + regions.size() + " regions");
             return regions;
@@ -117,5 +119,30 @@ public class JsonExportStrategy implements ExportStrategy {
     @Override
     public String getDescription() {
         return "Exports regions to a JSON file format";
+    }
+
+    private void applyWorldFromFile(RegionCollection regions, File file) {
+        World world = resolveWorld(file);
+        if (world == null) {
+            return;
+        }
+        regions.forEach(region -> region.setWorld(world));
+    }
+
+    private World resolveWorld(File file) {
+        File parent = file.getParentFile();
+        if (parent == null) {
+            return null;
+        }
+
+        File normalizedParent = parent.getAbsoluteFile();
+        for (World world : Bukkit.getWorlds()) {
+            File worldFolder = world.getWorldFolder();
+            if (worldFolder != null && worldFolder.getAbsoluteFile().equals(normalizedParent)) {
+                return world;
+            }
+        }
+
+        return Bukkit.getWorld(parent.getName());
     }
 }

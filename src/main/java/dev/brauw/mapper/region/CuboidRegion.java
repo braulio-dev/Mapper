@@ -62,7 +62,9 @@ public class CuboidRegion implements Region {
     
     @Override
     public boolean contains(Location location) {
-        if (!location.getWorld().equals(min.getWorld())) return false;
+        if (location.getWorld() == null || min.getWorld() == null || !location.getWorld().equals(min.getWorld())) {
+            return false;
+        }
         
         return location.getBlockX() >= min.getBlockX() && location.getBlockX() <= max.getBlockX() &&
                location.getBlockY() >= min.getBlockY() && location.getBlockY() <= max.getBlockY() &&

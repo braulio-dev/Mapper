@@ -55,6 +55,15 @@ public class MetadataManager {
         throw new IllegalArgumentException("Metadata file not found in world " + world.getName());
     }
 
+    public MapMetadata loadOrCreateMetadata(World world) {
+        File metadataFile = new File(world.getWorldFolder(), "metadata.json");
+        if (metadataFile.exists()) {
+            return loadMetadata(metadataFile);
+        }
+
+        return createDefaultMetadata();
+    }
+
     public void saveMetadata(File worldFolder, MapMetadata metadata) {
         File metadataFile = new File(worldFolder, "metadata.json");
         try (FileWriter writer = new FileWriter(metadataFile)) {
