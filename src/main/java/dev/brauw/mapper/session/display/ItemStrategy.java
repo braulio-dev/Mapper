@@ -4,10 +4,15 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.PointRegion;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Transformation;
 import org.jetbrains.annotations.NotNull;
@@ -25,6 +30,7 @@ import java.util.UUID;
 public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
 
     private final Map<PointRegion, ItemDisplay> displays = new HashMap<>();
+    private final Map<PointRegion, TextDisplay> labels = new HashMap<>();
     private final Multimap<PointRegion, UUID> viewers = ArrayListMultimap.create();
     private final Material material;
     private final MapperPlugin plugin;
@@ -60,13 +66,26 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
         });
     }
 
+    private TextDisplay getLabel(PointRegion region) {
+        final Location location = region.getLocation().add(0, 1.5, 0);
+        final Color color = region.getOptions().getColor().getBukkitColor();
+
+        return labels.computeIfAbsent(region, key -> location.getWorld().spawn(location, TextDisplay.class, spawned -> {
+            spawned.text(Component.text(region.getName()).color(TextColor.color(color.getRed(), color.getGreen(), color.getBlue())));
+            spawned.setBillboard(Display.Billboard.CENTER);
+            spawned.setVisibleByDefault(false);
+            spawned.setPersistent(false);
+        }));
+    }
+
     @Override
     public void display(@NotNull PointRegion region, @NotNull Player player) {
         // Get or create the item display for this region
         final ItemDisplay itemDisplay = getDisplay(region);
 
-        // Show the item to the player
+        // Show the item and label to the player
         player.showEntity(plugin, itemDisplay);
+        player.showEntity(plugin, getLabel(region));
         viewers.put(region, player.getUniqueId());
     }
 
@@ -75,6 +94,10 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
         final ItemDisplay removed = displays.remove(region);
         if (removed != null && removed.isValid()) {
             removed.remove();
+        }
+        final TextDisplay removedLabel = labels.remove(region);
+        if (removedLabel != null && removedLabel.isValid()) {
+            removedLabel.remove();
         }
         display(region, player);
     }
@@ -87,11 +110,20 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
             final ItemDisplay entity = Objects.requireNonNull(displays.get(region));
             player.hideEntity(plugin, entity);
 
-            // If there are no more viewers, remove the display
+            final TextDisplay label = labels.get(region);
+            if (label != null) {
+                player.hideEntity(plugin, label);
+            }
+
+            // If there are no more viewers, remove the displays
             if (viewers.get(region).isEmpty()) {
                 final ItemDisplay itemDisplay = displays.remove(region);
                 if (itemDisplay != null && itemDisplay.isValid()) {
                     itemDisplay.remove();
+                }
+                final TextDisplay removedLabel = labels.remove(region);
+                if (removedLabel != null && removedLabel.isValid()) {
+                    removedLabel.remove();
                 }
             }
         }

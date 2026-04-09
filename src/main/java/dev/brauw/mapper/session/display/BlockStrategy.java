@@ -4,10 +4,15 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.CuboidRegion;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.util.Transformation;
 import org.jetbrains.annotations.NotNull;
 import org.joml.AxisAngle4f;
@@ -24,6 +29,7 @@ import java.util.UUID;
 public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
 
     private final Map<CuboidRegion, BlockDisplay> displays = new HashMap<>();
+    private final Map<CuboidRegion, TextDisplay> labels = new HashMap<>();
     private final Multimap<CuboidRegion, UUID> viewers = ArrayListMultimap.create();
     private final MapperPlugin plugin;
 
@@ -65,13 +71,33 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         });
     }
 
+    private TextDisplay getLabel(CuboidRegion region) {
+        final Location min = region.getMin();
+        final Location max = region.getMax();
+        final Location labelLocation = new Location(
+                min.getWorld(),
+                (min.getX() + max.getX()) / 2,
+                max.getY() + 0.5,
+                (min.getZ() + max.getZ()) / 2
+        );
+        final Color color = region.getOptions().getColor().getBukkitColor();
+
+        return labels.computeIfAbsent(region, key -> labelLocation.getWorld().spawn(labelLocation, TextDisplay.class, spawned -> {
+            spawned.text(Component.text(region.getName()).color(TextColor.color(color.getRed(), color.getGreen(), color.getBlue())));
+            spawned.setBillboard(Display.Billboard.CENTER);
+            spawned.setVisibleByDefault(false);
+            spawned.setPersistent(false);
+        }));
+    }
+
     @Override
     public void display(@NotNull CuboidRegion region, @NotNull Player player) {
         // Get or create the block display for this region
         final BlockDisplay blockDisplay = getDisplay(region);
 
-        // Show the display to the player
+        // Show the display and label to the player
         player.showEntity(plugin, blockDisplay);
+        player.showEntity(plugin, getLabel(region));
         viewers.put(region, player.getUniqueId());
     }
 
@@ -80,6 +106,10 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         final BlockDisplay removed = displays.remove(region);
         if (removed != null && removed.isValid()) {
             removed.remove();
+        }
+        final TextDisplay removedLabel = labels.remove(region);
+        if (removedLabel != null && removedLabel.isValid()) {
+            removedLabel.remove();
         }
 
         display(region, player);
@@ -93,11 +123,20 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
             final BlockDisplay entity = Objects.requireNonNull(displays.get(region));
             player.hideEntity(plugin, entity);
 
-            // If there are no more viewers, remove the display
+            final TextDisplay label = labels.get(region);
+            if (label != null) {
+                player.hideEntity(plugin, label);
+            }
+
+            // If there are no more viewers, remove the displays
             if (viewers.get(region).isEmpty()) {
                 final BlockDisplay blockDisplay = displays.remove(region);
                 if (blockDisplay != null && blockDisplay.isValid()) {
                     blockDisplay.remove();
+                }
+                final TextDisplay removedLabel = labels.remove(region);
+                if (removedLabel != null && removedLabel.isValid()) {
+                    removedLabel.remove();
                 }
             }
         }

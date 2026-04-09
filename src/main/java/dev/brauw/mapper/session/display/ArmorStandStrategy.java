@@ -5,11 +5,14 @@ import com.google.common.collect.Multimap;
 import dev.brauw.mapper.MapperPlugin;
 import dev.brauw.mapper.region.PointRegion;
 import io.papermc.paper.entity.LookAnchor;
+import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.*;
 import org.bukkit.entity.ArmorStand;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scoreboard.Scoreboard;
@@ -28,6 +31,7 @@ import java.util.UUID;
 public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
 
     private final Map<PointRegion, ArmorStand> displays = new HashMap<>();
+    private final Map<PointRegion, TextDisplay> labels = new HashMap<>();
     private final Multimap<PointRegion, UUID> viewers = ArrayListMultimap.create();
     private final Map<UUID, Map<PointRegion, String>> playerTeams = new HashMap<>();
     private final MapperPlugin plugin;
@@ -111,13 +115,26 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
         }
     }
 
+    private TextDisplay getLabel(PointRegion region) {
+        final Location location = region.getLocation().add(0, 1.5, 0);
+        final Color color = region.getOptions().getColor().getBukkitColor();
+
+        return labels.computeIfAbsent(region, key -> location.getWorld().spawn(location, TextDisplay.class, spawned -> {
+            spawned.text(Component.text(region.getName()).color(TextColor.color(color.getRed(), color.getGreen(), color.getBlue())));
+            spawned.setBillboard(Display.Billboard.CENTER);
+            spawned.setVisibleByDefault(false);
+            spawned.setPersistent(false);
+        }));
+    }
+
     @Override
     public void display(@NotNull PointRegion region, @NotNull Player player) {
         // Get or create the armorstand for this region
         final ArmorStand armorStand = getEntity(region);
 
-        // Show the armorstand to the player
+        // Show the armorstand and label to the player
         player.showEntity(plugin, armorStand);
+        player.showEntity(plugin, getLabel(region));
 
         // Setup team with color for this player
         setupTeamForPlayer(region, player, armorStand);
@@ -132,6 +149,10 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
             cleanupTeamForPlayer(region, player);
             removed.remove();
         }
+        final TextDisplay removedLabel = labels.remove(region);
+        if (removedLabel != null && removedLabel.isValid()) {
+            removedLabel.remove();
+        }
         display(region, player);
     }
 
@@ -142,15 +163,24 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
             // Cleanup the team
             cleanupTeamForPlayer(region, player);
 
-            // Hide entity
+            // Hide entity and label
             final ArmorStand entity = Objects.requireNonNull(displays.get(region));
             player.hideEntity(plugin, entity);
 
-            // If there are no more viewers, remove the display
+            final TextDisplay label = labels.get(region);
+            if (label != null) {
+                player.hideEntity(plugin, label);
+            }
+
+            // If there are no more viewers, remove the displays
             if (viewers.get(region).isEmpty()) {
                 final ArmorStand armorStand = displays.remove(region);
                 if (armorStand != null && armorStand.isValid()) {
                     armorStand.remove();
+                }
+                final TextDisplay removedLabel = labels.remove(region);
+                if (removedLabel != null && removedLabel.isValid()) {
+                    removedLabel.remove();
                 }
             }
         }

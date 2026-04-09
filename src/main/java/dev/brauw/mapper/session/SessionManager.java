@@ -50,7 +50,7 @@ public class SessionManager {
         final ItemStrategy pointStrategy = new ItemStrategy(plugin, Material.REDSTONE_LAMP);
         final ArmorStandStrategy perspectiveStrategy =  new ArmorStandStrategy(plugin);
         final BlockStrategy blockStrategy = new BlockStrategy(plugin);
-        final PolygonStrategy polygonStrategy = new PolygonStrategy(blockStrategy);
+        final PolygonStrategy polygonStrategy = new PolygonStrategy(plugin, blockStrategy);
         this.displayStrategies.put(Region.RegionType.POLYGON, polygonStrategy);
         this.displayStrategies.put(Region.RegionType.CUBOID, blockStrategy);
         this.displayStrategies.put(Region.RegionType.POINT, pointStrategy);
