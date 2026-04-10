@@ -7,6 +7,7 @@ import dev.brauw.mapper.region.PolygonRegion;
 import dev.brauw.mapper.region.PerspectiveRegion;
 import dev.brauw.mapper.region.RegionOptions;
 import dev.brauw.mapper.session.EditSession;
+import dev.brauw.mapper.tag.TagRegistry;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -34,6 +35,7 @@ import java.util.WeakHashMap;
 public class SelectionHandler {
 
     private final GuiManager guiManager;
+    private final TagRegistry tagRegistry;
     private final Map<Player, SelectionCorners> selections = new WeakHashMap<>();
     private final Map<Player, List<CuboidRegion>> polygonSelections = new WeakHashMap<>();
 
@@ -260,6 +262,32 @@ public class SelectionHandler {
                             player.sendMessage(Component.text("Region deleted: ", NamedTextColor.RED)
                                     .append(Component.text(region.getName(), NamedTextColor.DARK_RED)));
                             player.playSound(player.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.0f);
+                        },
+                        () -> {
+                            player.sendMessage(Component.text("No region found at this location.", NamedTextColor.RED));
+                            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+                        }
+                );
+    }
+
+    public void handleTagEditor(EditSession session, PlayerInteractEvent event) {
+        Player player = session.getOwner();
+        final Location location = getTargetPoint(player);
+        if (location == null) return;
+
+        session.getRegions().stream()
+                .filter(region -> region.contains(location) || (region instanceof PointRegion point && point.getLocation().distance(location) < 0.2))
+                .findFirst()
+                .ifPresentOrElse(
+                        region -> {
+                            if (!tagRegistry.hasTags(region.getName())) {
+                                player.sendMessage(Component.text("No tags available for ", NamedTextColor.RED)
+                                        .append(Component.text("'" + region.getName() + "'", NamedTextColor.DARK_RED))
+                                        .append(Component.text(".", NamedTextColor.RED)));
+                                player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+                                return;
+                            }
+                            guiManager.openTagEditor(player, region, tagRegistry);
                         },
                         () -> {
                             player.sendMessage(Component.text("No region found at this location.", NamedTextColor.RED));

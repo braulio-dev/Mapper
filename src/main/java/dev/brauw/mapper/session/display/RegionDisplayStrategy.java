@@ -30,4 +30,12 @@ public interface RegionDisplayStrategy<T extends Region> {
      * @param player The player to remove the region from.
      */
     void hide(@NotNull T region, @NotNull Player player);
+
+    /**
+     * Re-creates and re-shows display entities that have become invalid
+     * (e.g. due to chunk unloading destroying non-persistent entities).
+     * @param region The region to revalidate.
+     * @param player The player to revalidate for.
+     */
+    void revalidate(@NotNull T region, @NotNull Player player);
 }

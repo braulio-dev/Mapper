@@ -5,9 +5,12 @@ import dev.brauw.mapper.gui.common.GuiSet;
 import dev.brauw.mapper.gui.common.GuiSetName;
 import dev.brauw.mapper.gui.metadata.GuiMetadata;
 import dev.brauw.mapper.gui.selector.GuiColorSelect;
+import dev.brauw.mapper.gui.tag.GuiTagEditor;
 import dev.brauw.mapper.metadata.MapMetadata;
+import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.region.RegionOptions;
 import dev.brauw.mapper.session.EditSession;
+import dev.brauw.mapper.tag.TagRegistry;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import xyz.xenondevs.invui.gui.structure.Structure;
@@ -43,6 +46,13 @@ public class GuiManager {
                 .setTitle("Create a new region")
                 .addCloseHandler(onClose)
                 .open(session.getOwner().getPlayer());
+    }
+
+    public void openTagEditor(Player player, Region region, TagRegistry tagRegistry) {
+        Window.single()
+                .setTitle("Tag Editor")
+                .setGui(new GuiTagEditor(region, tagRegistry))
+                .open(player);
     }
 
     public void openMetadataEditor(Player player, MapMetadata mapMetadata) {

@@ -52,6 +52,11 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
         );
         final Color color = region.getOptions().getColor().getBukkitColor();
 
+        final TextDisplay existingLabel = labels.get(region);
+        if (existingLabel != null && !existingLabel.isValid()) {
+            labels.remove(region);
+        }
+
         return labels.computeIfAbsent(region, key -> labelLocation.getWorld().spawn(labelLocation, TextDisplay.class, spawned -> {
             spawned.text(Component.text(region.getName()).color(TextColor.color(color.getRed(), color.getGreen(), color.getBlue())));
             spawned.setBillboard(Display.Billboard.CENTER);
@@ -75,6 +80,16 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
             removedLabel.remove();
         }
         player.showEntity(plugin, getLabel(region));
+    }
+
+    @Override
+    public void revalidate(@NotNull PolygonRegion region, @NotNull Player player) {
+        region.getChildren().forEach(child -> blockStrategy.revalidate(child, player));
+        final TextDisplay label = labels.get(region);
+        if (label != null && !label.isValid()) {
+            labels.remove(region);
+            player.showEntity(plugin, getLabel(region));
+        }
     }
 
     @Override

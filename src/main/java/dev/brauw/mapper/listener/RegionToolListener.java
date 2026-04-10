@@ -55,6 +55,11 @@ public class RegionToolListener implements Listener {
             event.setCancelled(true);
             handlePolygonWand(event, session);
         }
+        else if (toolManager.isTool(item, ToolType.TAG_TOOL) &&
+                event.getAction().isRightClick()) {
+            event.setCancelled(true);
+            selectionHandler.handleTagEditor(session, event);
+        }
     }
 
     private void handleCuboidWand(PlayerInteractEvent event, EditSession session) {

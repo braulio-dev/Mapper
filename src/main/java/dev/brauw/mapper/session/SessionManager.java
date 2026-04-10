@@ -9,6 +9,8 @@ import lombok.CustomLog;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
+import org.bukkit.scheduler.BukkitTask;
+
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 
@@ -22,6 +24,7 @@ public class SessionManager {
     private final Map<UUID, EditSession> playerSessions;
     private final long sessionTimeoutMillis;
     private final MapperPlugin plugin;
+    private BukkitTask revalidateTask;
     
     /**
      * Creates a new SessionManager with the default timeout.
@@ -41,9 +44,23 @@ public class SessionManager {
         this.playerSessions = new HashMap<>();
         this.displayStrategies = new EnumMap<>(Region.RegionType.class);
         createDisplayStrategies();
+        startRevalidateTask();
         log.info("Session manager initialized with " +
                 TimeUnit.MILLISECONDS.toMinutes(sessionTimeoutMillis) +
                 " minute timeout");
+    }
+
+    private void startRevalidateTask() {
+        this.revalidateTask = plugin.getTaskScheduler().scheduleRecurringTask(() -> {
+            for (EditSession session : playerSessions.values()) {
+                final Player owner = session.getOwner();
+                if (!owner.isOnline()) continue;
+                for (Region region : session.getRegions()) {
+                    final RegionDisplayStrategy<Region> strategy = getDisplayStrategy(region);
+                    strategy.revalidate(region, owner);
+                }
+            }
+        }, 20L, 20L);
     }
 
     private void createDisplayStrategies() {

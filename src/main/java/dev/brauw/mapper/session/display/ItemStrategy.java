@@ -41,6 +41,11 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
     }
 
     private ItemDisplay getDisplay(PointRegion region) {
+        final ItemDisplay existing = displays.get(region);
+        if (existing != null && !existing.isValid()) {
+            displays.remove(region);
+        }
+
         final Location location = region.getLocation();
 
         return displays.computeIfAbsent(region, key -> {
@@ -67,6 +72,11 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
     }
 
     private TextDisplay getLabel(PointRegion region) {
+        final TextDisplay existingLabel = labels.get(region);
+        if (existingLabel != null && !existingLabel.isValid()) {
+            labels.remove(region);
+        }
+
         final Location location = region.getLocation().add(0, 1.5, 0);
         final Color color = region.getOptions().getColor().getBukkitColor();
 
@@ -100,6 +110,19 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
             removedLabel.remove();
         }
         display(region, player);
+    }
+
+    @Override
+    public void revalidate(@NotNull PointRegion region, @NotNull Player player) {
+        final ItemDisplay entity = displays.get(region);
+        final TextDisplay label = labels.get(region);
+        boolean needsRefresh = (entity != null && !entity.isValid()) || (label != null && !label.isValid());
+        if (needsRefresh) {
+            if (entity != null && !entity.isValid()) displays.remove(region);
+            if (label != null && !label.isValid()) labels.remove(region);
+            player.showEntity(plugin, getDisplay(region));
+            player.showEntity(plugin, getLabel(region));
+        }
     }
 
     @Override

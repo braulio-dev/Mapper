@@ -38,6 +38,11 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
     }
 
     private BlockDisplay getDisplay(CuboidRegion region) {
+        final BlockDisplay existing = displays.get(region);
+        if (existing != null && !existing.isValid()) {
+            displays.remove(region);
+        }
+
         final Location min = region.getMin();
         final Location max = region.getMax();
         final Location center = min.clone().add(
@@ -72,6 +77,11 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
     }
 
     private TextDisplay getLabel(CuboidRegion region) {
+        final TextDisplay existingLabel = labels.get(region);
+        if (existingLabel != null && !existingLabel.isValid()) {
+            labels.remove(region);
+        }
+
         final Location min = region.getMin();
         final Location max = region.getMax();
         final Location labelLocation = new Location(
@@ -113,6 +123,19 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         }
 
         display(region, player);
+    }
+
+    @Override
+    public void revalidate(@NotNull CuboidRegion region, @NotNull Player player) {
+        final BlockDisplay entity = displays.get(region);
+        final TextDisplay label = labels.get(region);
+        boolean needsRefresh = (entity != null && !entity.isValid()) || (label != null && !label.isValid());
+        if (needsRefresh) {
+            if (entity != null && !entity.isValid()) displays.remove(region);
+            if (label != null && !label.isValid()) labels.remove(region);
+            player.showEntity(plugin, getDisplay(region));
+            player.showEntity(plugin, getLabel(region));
+        }
     }
 
     @Override

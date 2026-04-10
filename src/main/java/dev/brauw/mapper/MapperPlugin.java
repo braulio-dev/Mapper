@@ -8,6 +8,7 @@ import dev.brauw.mapper.logger.BukkitLoggerFactory;
 import dev.brauw.mapper.metadata.MetadataManager;
 import dev.brauw.mapper.selection.SelectionHandler;
 import dev.brauw.mapper.session.SessionManager;
+import dev.brauw.mapper.tag.TagRegistry;
 import dev.brauw.mapper.tool.RegionToolManager;
 import dev.brauw.mapper.util.BukkitTaskScheduler;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
@@ -34,6 +35,7 @@ public class MapperPlugin extends JavaPlugin {
     private RegionToolManager regionToolManager;
     private SelectionHandler selectionHandler;
     private GuiManager guiManager;
+    private TagRegistry tagRegistry;
     private BukkitTaskScheduler taskScheduler;
 
     @Override
@@ -44,8 +46,9 @@ public class MapperPlugin extends JavaPlugin {
 
         this.taskScheduler = new BukkitTaskScheduler(this);
         this.regionToolManager = new RegionToolManager(this);
+        this.tagRegistry = new TagRegistry();
         this.guiManager = new GuiManager(this);
-        this.selectionHandler = new SelectionHandler(guiManager);
+        this.selectionHandler = new SelectionHandler(guiManager, tagRegistry);
         this.listenerManager = new ListenerManager(this, regionToolManager, selectionHandler);
         this.listenerManager.registerListeners();
         this.sessionManager = new SessionManager(5 * 60 * 1000, this);
