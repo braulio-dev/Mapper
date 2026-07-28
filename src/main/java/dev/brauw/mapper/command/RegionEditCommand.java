@@ -59,14 +59,14 @@ public class RegionEditCommand {
     }
 
     @Command("cuboid [name]")
-    public void cuboid(CommandSourceStack source, @Default("") @Argument("name") String name) {
+    public void cuboid(CommandSourceStack source, @Nullable @Argument("name") String name) {
         final Player player = editor(source);
         if (player == null) return;
         selection().createCuboidRegion(support.editingHere(player), player, orPrompt(name));
     }
 
     @Command("point [name]")
-    public void point(CommandSourceStack source, @Default("") @Argument("name") String name) {
+    public void point(CommandSourceStack source, @Nullable @Argument("name") String name) {
         final Player player = editor(source);
         if (player == null) return;
         // No interaction point from a command, so the player's own position is the placement.
@@ -74,7 +74,7 @@ public class RegionEditCommand {
     }
 
     @Command("perspective [name]")
-    public void perspective(CommandSourceStack source, @Default("") @Argument("name") String name) {
+    public void perspective(CommandSourceStack source, @Nullable @Argument("name") String name) {
         final Player player = editor(source);
         if (player == null) return;
         selection().createPerspectiveRegion(support.editingHere(player), player, null, orPrompt(name));
@@ -88,7 +88,7 @@ public class RegionEditCommand {
     }
 
     @Command("polygon create [name]")
-    public void polygonCreate(CommandSourceStack source, @Default("") @Argument("name") String name) {
+    public void polygonCreate(CommandSourceStack source, @Nullable @Argument("name") String name) {
         final Player player = editor(source);
         if (player == null) return;
         selection().createPolygonRegion(support.editingHere(player), player, orPrompt(name));
@@ -109,7 +109,7 @@ public class RegionEditCommand {
     }
 
     @Command("path create [name]")
-    public void pathCreate(CommandSourceStack source, @Default("") @Argument("name") String name) {
+    public void pathCreate(CommandSourceStack source, @Nullable @Argument("name") String name) {
         final Player player = editor(source);
         if (player == null) return;
         selection().createPathRegion(support.editingHere(player), player, orPrompt(name));
@@ -156,7 +156,7 @@ public class RegionEditCommand {
     @Command("copy <region> [name]")
     public void copy(CommandSourceStack source,
                      @Argument(value = "region", suggestions = "regionNames") String region,
-                     @Default("") @Argument("name") String name) {
+                     @Nullable @Argument("name") String name) {
         final Player player = editor(source);
         if (player == null) return;
         final EditSession session = support.editingHere(player);
@@ -164,7 +164,7 @@ public class RegionEditCommand {
         prompt.choose(player, support.matching(session, region), "copy", target -> {
             final Vector delta = player.getLocation().toVector()
                     .subtract(RegionTransform.anchor(target).toVector());
-            final String copyName = name.isEmpty() ? target.getName() : name;
+            final String copyName = orPrompt(name) == null ? target.getName() : name;
             final Region duplicate = RegionTransform.duplicate(target, delta, copyName);
 
             session.addRegion(duplicate);
@@ -246,10 +246,19 @@ public class RegionEditCommand {
     }
 
     /**
-     * @return the typed name, or {@code null} to mean "ask for one in the create GUI" - which is
-     * what an omitted optional name argument arrives as
+     * Normalises an omitted optional name to {@code null}, which every creation method reads as
+     * "ask for one in the create GUI".
+     * <p>
+     * The optional name arguments here deliberately carry no {@code @Default}. An empty default is
+     * not merely redundant, it hangs the parser: when the input is exhausted Cloud re-parses the same
+     * node with the default appended to the input, so a default that appends nothing never makes
+     * progress and recurses until the stack overflows. An absent optional arrives as {@code null}
+     * instead, which is what this collapses.
+     *
+     * @param name the typed name, or {@code null} if the argument was omitted
+     * @return the name, or {@code null} to prompt for one
      */
-    private @Nullable String orPrompt(String name) {
+    private @Nullable String orPrompt(@Nullable String name) {
         return name == null || name.isEmpty() ? null : name;
     }
 }

@@ -33,6 +33,7 @@ import org.incendo.cloud.annotations.Argument;
 import org.incendo.cloud.annotations.Command;
 import org.incendo.cloud.annotations.Default;
 import org.incendo.cloud.annotations.Permission;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -390,14 +391,19 @@ public class MapperCommand {
         }
     }
 
+    /**
+     * The filter carries no {@code @Default}: an empty one hangs Cloud's parser, which re-parses the
+     * same node with the default appended and so never consumes anything. An omitted optional
+     * arrives as {@code null}.
+     */
     @Command("list [filter]")
-    public void list(CommandSourceStack source, @Default("") @Argument("filter") String filter) {
+    public void list(CommandSourceStack source, @Nullable @Argument("filter") String filter) {
         final Player player = support.player(source, "browse regions");
         if (player == null) return;
         final EditSession session = support.session(player);
         if (session == null) return;
 
-        final String needle = filter.toLowerCase(Locale.ROOT);
+        final String needle = filter == null ? "" : filter.toLowerCase(Locale.ROOT);
         final List<Region> shown = session.getRegions().stream()
                 .filter(region -> needle.isEmpty()
                         || region.getName().toLowerCase(Locale.ROOT).contains(needle)
@@ -410,7 +416,7 @@ public class MapperCommand {
             return;
         }
 
-        final String title = filter.isEmpty()
+        final String title = needle.isEmpty()
                 ? "Regions (" + shown.size() + ")"
                 : "Regions matching '" + filter + "' (" + shown.size() + ")";
         mapper.getGuiManager().openRegionBrowser(session, player, mapper.getSelectionHandler(), shown, title);
