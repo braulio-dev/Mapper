@@ -58,11 +58,13 @@ public class GuiManager {
     }
 
     /**
-     * Opens an anvil GUI for the player to type a concrete value for an
-     * input-requiring tag (e.g. {@code level:47}). The value is only accepted
-     * when it satisfies {@link Tag#matches(String)}; on confirmation {@code onConfirm}
-     * receives it. The tag editor is reopened afterwards, on the next tick so it
-     * reflects the change.
+     * Opens an anvil GUI for the player to type a value for an input-requiring tag.
+     * <p>
+     * The prompt already knows which tag it is filling, so only the value half is typed
+     * ({@code 47}, not {@code level:47}) and {@link Tag#completeInput(String)} supplies the rest.
+     * The completed value is only accepted when it satisfies {@link Tag#matches(String)}; on
+     * confirmation {@code onConfirm} receives it. The tag editor is reopened afterwards, on the
+     * next tick so it reflects the change.
      *
      * @param player       the editing player
      * @param region       the region the tag is being applied to
@@ -72,14 +74,16 @@ public class GuiManager {
      */
     public void openTagValueInput(Player player, Region region, TagRegistry tagRegistry, Tag tag, Consumer<String> onConfirm) {
         AtomicReference<String> value = new AtomicReference<>("");
-        GuiSet<String> input = new GuiSet<>(value, () -> Material.NAME_TAG, () -> onConfirm.accept(value.get()), tag::matches);
+        GuiSet<String> input = new GuiSet<>(value, () -> Material.NAME_TAG,
+                () -> onConfirm.accept(tag.completeInput(value.get())),
+                typed -> tag.matches(tag.completeInput(typed)));
         AnvilWindow.single()
                 .setGui(input)
                 .addRenameHandler(updated -> {
                     value.set(updated);
                     input.update();
                 })
-                .setTitle("Enter " + tag.usage())
+                .setTitle("Enter " + tag.name() + " " + tag.inputHint())
                 .addCloseHandler(() -> mapper.getTaskScheduler().scheduleTask(
                         () -> openTagEditor(player, region, tagRegistry), 1L))
                 .open(player);

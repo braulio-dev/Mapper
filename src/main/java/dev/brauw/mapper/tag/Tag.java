@@ -75,6 +75,33 @@ public abstract class Tag {
     public abstract boolean matches(String value);
 
     /**
+     * Completes what a player typed into the concrete value this tag stores.
+     * <p>
+     * The value prompt is already scoped to one tag, so the player types only the value half
+     * ({@code 47}) and the {@code level:} half is supplied here. Text that already satisfies
+     * {@link #matches(String)} is taken verbatim, which keeps the fully typed form working and
+     * leaves tags whose values are not {@code name:value} shaped alone.
+     *
+     * @param input the raw text typed by the player
+     * @return the concrete value to validate and store
+     */
+    public String completeInput(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+        return matches(input) ? input : name + ":" + input;
+    }
+
+    /**
+     * @return the value half of {@link #usage()} (e.g. {@code <number>} for a usage of
+     * {@code level:<number>}), which is all the player types into the value prompt.
+     */
+    public String inputHint() {
+        String prefix = name + ":";
+        return usage.startsWith(prefix) ? usage.substring(prefix.length()) : usage;
+    }
+
+    /**
      * Checks whether this tag is offered on the given region, by asking this tag's
      * {@link RegionScope}. Subclasses may override for matching the scope cannot express.
      *
