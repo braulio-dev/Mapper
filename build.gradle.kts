@@ -1,14 +1,19 @@
 import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import org.gradle.api.component.AdhocComponentWithVariants
 
 plugins {
     id("java")
+    // java-library so the libraries Mapper exposes through its own public API (Cloud's command
+    // manager, InvUI-backed GUIs, Jackson-backed region models) can be declared `api` and therefore
+    // reach a consumer's compile classpath. The fat jar used to supply them by accident.
+    id("java-library")
     id("io.freefair.lombok") version "8.12.2.1"
     id("com.gradleup.shadow") version "8.3.6"
     id("maven-publish")
 }
 
 group = "dev.brauw.mapper"
-version = "1.0.18"
+version = "1.0.19"
 
 repositories {
     mavenCentral()
@@ -18,12 +23,14 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.16.1")
-    implementation("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
-    implementation("xyz.xenondevs.invui:invui:1.49")
-    implementation("org.incendo:cloud-core:2.0.0")
-    implementation("org.incendo:cloud-annotations:2.0.0")
-    implementation("org.incendo:cloud-paper:2.0.0-beta.10")
+    // api, not implementation: these types appear in Mapper's own public signatures, so a consumer
+    // compiling against Mapper needs them on its compile classpath too.
+    api("com.fasterxml.jackson.core:jackson-databind:2.16.1")
+    api("com.fasterxml.jackson.core:jackson-annotations:2.16.1")
+    api("xyz.xenondevs.invui:invui:1.49")
+    api("org.incendo:cloud-core:2.0.0")
+    api("org.incendo:cloud-annotations:2.0.0")
+    api("org.incendo:cloud-paper:2.0.0-beta.10")
 
     testImplementation("org.mockbukkit.mockbukkit:mockbukkit-v1.21:4.105.0") {
         exclude(group = "org.junit")
@@ -92,20 +99,41 @@ tasks.named("build") {
     dependsOn(bundleJar)
 }
 
+// The published library is the THIN jar plus a POM that declares Mapper's real dependencies.
+//
+// It used to be the fat shadowJar with a dependency-less POM, which meant every consumer resolved
+// Jackson, Cloud and InvUI *through* Mapper under their original package names - without ever
+// declaring them. Relocating those libraries in 1.0.18 removed them from the classpath that
+// consumers had been silently relying on, breaking any tool that compiles against a subset of the
+// module classpath. Publishing thin puts the dependencies where they belong: in the POM.
+//
+// The fat jar is still published, under the "plugin" classifier - it is the artifact you install on
+// a server, not the one you compile against.
+// Shadow contributes shadowRuntimeElements to the java component, which would publish the fat jar as
+// a second unclassified artifact and collide with the thin one. Skip it - the fat jar is published
+// deliberately below, under its own classifier.
+(components["java"] as AdhocComponentWithVariants)
+        .withVariantsFromConfiguration(configurations["shadowRuntimeElements"]) { skip() }
+
 publishing {
     publications {
         create<MavenPublication>("Mapper") {
-            // Primary artifact: the self-contained, runnable plugin (bundles InvUI).
-            artifact(tasks["shadowJar"])
+            from(components["java"])
+
+            // Self-contained runnable plugin (bundles relocated InvUI/Jackson/Cloud).
+            // Consume as com.github.BetterPvP:Mapper:<version>:plugin
+            //
+            // Published from the task's output file rather than the task itself: shadowJar keeps an
+            // empty archiveClassifier so it builds as `mapper-plugin.jar` for direct server installs,
+            // and publishing the task would inherit that empty classifier and collide with the thin jar.
+            artifact(tasks.named<ShadowJar>("shadowJar").flatMap { it.archiveFile }) {
+                classifier = "plugin"
+                builtBy(tasks.named("shadowJar"))
+            }
 
             // Embeddable bundle (no InvUI) for shading into a host plugin. Consume with the
             // "bundle" classifier, e.g. com.github.BetterPvP:Mapper:<version>:bundle
             artifact(bundleJar)
-
-            // Exclude the default JAR
-            artifact(tasks["jar"]) {
-                classifier = "original"
-            }
 
             pom {
                 name.set("Mapper")
