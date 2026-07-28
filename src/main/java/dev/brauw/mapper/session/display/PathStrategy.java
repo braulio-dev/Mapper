@@ -74,9 +74,23 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
 
     @Override
     public void revalidate(@NotNull PathRegion region) {
+        final List<Player> currentViewers = viewersOf(region);
+        if (currentViewers.isEmpty()) {
+            return;
+        }
+
         final List<Entity> existing = parts.get(region);
-        if (existing != null && !existing.stream().allMatch(Entity::isValid)) {
+        if (existing == null || !existing.stream().allMatch(Entity::isValid)) {
             update(region);
+            return;
+        }
+
+        // See BlockStrategy#revalidate: visibility is re-asserted every pass so a lost grant heals
+        // itself instead of leaving a path invisible until the viewer rejoins the session.
+        for (Player viewer : currentViewers) {
+            for (Entity part : existing) {
+                viewer.showEntity(plugin, part);
+            }
         }
     }
 

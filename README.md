@@ -57,6 +57,9 @@ Mapper allows server administrators and world editors to define various types of
     - Blaze Rod: Cuboid Region Wand
     - Breeze Rod: Polygon Region Wand
     - Shears: Region Deletion Tool
+    - Lead: Path Region Wand
+    - Book: Region Clipboard - right-click a region to copy it, sneak +
+      right-click to paste it where you stand
 
 ### Creating a Cuboid Region
 
@@ -131,6 +134,7 @@ and saved. Every reported problem is clickable and teleports you to the region i
 | `/mapper perspective [name]`         | Create a point that also records your facing       |
 | `/mapper polygon add\|create [name]` | Add a polygon part, or finish the polygon          |
 | `/mapper path add\|undo\|create [name]` | Append, undo or finish a path                   |
+| `/mapper paste [name]`               | Paste what the clipboard tool copied               |
 | `/mapper cancel`                     | Clear your in-progress selection                   |
 | `/mapper delete <region>`            | Delete a region by name                            |
 | `/mapper tag <region>`               | Open a region's tag editor                         |

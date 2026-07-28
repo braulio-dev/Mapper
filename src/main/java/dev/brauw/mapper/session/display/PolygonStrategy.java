@@ -92,9 +92,21 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
     public void revalidate(@NotNull PolygonRegion region) {
         region.getChildren().forEach(blockStrategy::revalidate);
 
+        final List<Player> currentViewers = viewersOf(region);
+        if (currentViewers.isEmpty()) {
+            return;
+        }
+
         final TextDisplay label = labels.get(region);
-        if (label != null && !label.isValid()) {
+        if (label == null || !label.isValid()) {
             update(region);
+            return;
+        }
+
+        // See BlockStrategy#revalidate. The children re-assert themselves above; this is the
+        // polygon's own name label.
+        for (Player viewer : currentViewers) {
+            viewer.showEntity(plugin, label);
         }
     }
 

@@ -180,10 +180,23 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
 
     @Override
     public void revalidate(@NotNull PointRegion region) {
+        final List<Player> currentViewers = viewersOf(region);
+        if (currentViewers.isEmpty()) {
+            return;
+        }
+
         final ArmorStand entity = displays.get(region);
         final TextDisplay label = labels.get(region);
-        if ((entity != null && !entity.isValid()) || (label != null && !label.isValid())) {
+        if (entity == null || !entity.isValid() || label == null || !label.isValid()) {
             update(region);
+            return;
+        }
+
+        // See BlockStrategy#revalidate. Only the visibility grant is re-asserted - the scoreboard
+        // team is left alone, since re-registering it every second would churn teams for no gain.
+        for (Player viewer : currentViewers) {
+            viewer.showEntity(plugin, entity);
+            viewer.showEntity(plugin, label);
         }
     }
 

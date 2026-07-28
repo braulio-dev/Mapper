@@ -68,6 +68,24 @@ public class RegionToolListener implements Listener {
             event.setCancelled(true);
             handlePathWand(event, session, player);
         }
+        else if (toolManager.isTool(item, ToolType.CLIPBOARD_TOOL) && event.getAction().isRightClick()) {
+            event.setCancelled(true);
+            handleClipboard(session, player);
+        }
+    }
+
+    /**
+     * Right-click copies what you are looking at; sneak + right-click pastes it where you stand.
+     * <p>
+     * Both are right-clicks, so sneaking is the whole distinction - which also means the paste never
+     * needs anything under the crosshair, and works while looking at open air.
+     */
+    private void handleClipboard(EditSession session, Player player) {
+        if (player.isSneaking()) {
+            selectionHandler.handlePaste(session, player, null);
+        } else {
+            selectionHandler.handleCopy(session, player);
+        }
     }
 
     /**
@@ -89,6 +107,14 @@ public class RegionToolListener implements Listener {
         final EditSession session = editableSession(player);
         if (session == null) return;
 
+        // Paste needs no target, so it is handled before the entity is resolved - otherwise sneaking
+        // while facing an NPC marker would swallow the click and paste nothing.
+        if (toolManager.isTool(item, ToolType.CLIPBOARD_TOOL) && player.isSneaking()) {
+            event.setCancelled(true);
+            selectionHandler.handlePaste(session, player, null);
+            return;
+        }
+
         final Region region = resolveRegion(session, event.getRightClicked());
         if (region == null) return;
 
@@ -99,6 +125,9 @@ public class RegionToolListener implements Listener {
         } else if (toolManager.isTool(item, ToolType.TAG_TOOL)) {
             event.setCancelled(true);
             selectionHandler.openTagEditor(player, region);
+        } else if (toolManager.isTool(item, ToolType.CLIPBOARD_TOOL)) {
+            event.setCancelled(true);
+            selectionHandler.copyRegion(player, region);
         }
     }
 

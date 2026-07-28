@@ -128,10 +128,28 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
 
     @Override
     public void revalidate(@NotNull CuboidRegion region) {
+        final List<Player> currentViewers = viewersOf(region);
+        if (currentViewers.isEmpty()) {
+            return;
+        }
+
         final BlockDisplay entity = displays.get(region);
         final TextDisplay label = labels.get(region);
-        if ((entity != null && !entity.isValid()) || (label != null && !label.isValid())) {
+        // Missing counts as stale, not as "nothing to do". A viewer with no entity is exactly the
+        // state a region ends up in when its chunk unloaded and something dropped the entry.
+        if (entity == null || !entity.isValid() || label == null || !label.isValid()) {
             update(region);
+            return;
+        }
+
+        // Re-granted every pass rather than only after a rebuild. A showEntity grant is per-player
+        // state that several things can quietly invalidate - the entity being respawned in a chunk
+        // the viewer had not loaded, or a tracker that never sent it - and the symptom is a region
+        // that stays invisible until the player leaves and rejoins the session. Re-asserting is
+        // cheap and idempotent, so the sweep repairs that within a second instead of never.
+        for (Player viewer : currentViewers) {
+            viewer.showEntity(plugin, entity);
+            viewer.showEntity(plugin, label);
         }
     }
 

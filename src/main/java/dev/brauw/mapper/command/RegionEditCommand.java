@@ -175,6 +175,20 @@ public class RegionEditCommand {
         });
     }
 
+    /**
+     * Pastes what the Region Clipboard tool last copied.
+     * <p>
+     * Distinct from {@link #copy}: that names a region and duplicates it in one step, while the
+     * clipboard separates the two, so you can copy something here and place it somewhere you have
+     * not decided on yet.
+     */
+    @Command("paste [name]")
+    public void paste(CommandSourceStack source, @Nullable @Argument("name") String name) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().handlePaste(support.editingHere(player), player, orPrompt(name));
+    }
+
     @Command("offset <region> <x> <y> <z>")
     public void offset(CommandSourceStack source,
                        @Argument(value = "region", suggestions = "regionNames") String region,

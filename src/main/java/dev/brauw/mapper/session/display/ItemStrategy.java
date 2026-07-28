@@ -114,10 +114,23 @@ public class ItemStrategy implements RegionDisplayStrategy<PointRegion> {
 
     @Override
     public void revalidate(@NotNull PointRegion region) {
+        final List<Player> currentViewers = viewersOf(region);
+        if (currentViewers.isEmpty()) {
+            return;
+        }
+
         final ItemDisplay entity = displays.get(region);
         final TextDisplay label = labels.get(region);
-        if ((entity != null && !entity.isValid()) || (label != null && !label.isValid())) {
+        if (entity == null || !entity.isValid() || label == null || !label.isValid()) {
             update(region);
+            return;
+        }
+
+        // See BlockStrategy#revalidate: visibility is re-asserted every pass so a lost grant heals
+        // itself instead of leaving a region invisible until the viewer rejoins the session.
+        for (Player viewer : currentViewers) {
+            viewer.showEntity(plugin, entity);
+            viewer.showEntity(plugin, label);
         }
     }
 

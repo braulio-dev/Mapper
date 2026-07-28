@@ -10,6 +10,7 @@ import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.listener.ListenerManager;
 import dev.brauw.mapper.logger.BukkitLoggerFactory;
 import dev.brauw.mapper.metadata.MetadataManager;
+import dev.brauw.mapper.selection.RegionClipboard;
 import dev.brauw.mapper.selection.SelectionHandler;
 import dev.brauw.mapper.session.SessionManager;
 import dev.brauw.mapper.storage.StorageManager;
@@ -50,6 +51,7 @@ public final class Mapper {
     private final RegionToolManager regionToolManager;
     private final TagRegistry tagRegistry;
     private final GuiManager guiManager;
+    private final RegionClipboard regionClipboard;
     private final SelectionHandler selectionHandler;
     private final ListenerManager listenerManager;
     private final SessionManager sessionManager;
@@ -67,7 +69,8 @@ public final class Mapper {
         this.regionToolManager = new RegionToolManager(plugin);
         this.tagRegistry = new TagRegistry();
         this.guiManager = new GuiManager(this);
-        this.selectionHandler = new SelectionHandler(guiManager, tagRegistry);
+        this.regionClipboard = new RegionClipboard();
+        this.selectionHandler = new SelectionHandler(guiManager, tagRegistry, regionClipboard);
         this.listenerManager = new ListenerManager(this, regionToolManager, selectionHandler);
         this.listenerManager.registerListeners();
         this.sessionManager = new SessionManager(SESSION_TIMEOUT_MILLIS, this);

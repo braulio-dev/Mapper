@@ -75,7 +75,15 @@ public class SessionManager {
                     continue;
                 }
                 for (Region region : session.getRegions()) {
-                    getDisplayStrategy(region).revalidate(region);
+                    try {
+                        getDisplayStrategy(region).revalidate(region);
+                    } catch (RuntimeException exception) {
+                        // Isolated per region: this sweep is what re-shows displays after a chunk
+                        // cycles, so letting one region's failure abort the pass would leave every
+                        // region after it in the list invisible, intermittently and for no visible
+                        // reason.
+                        log.severe("Failed to revalidate region '" + region.getName() + "': " + exception);
+                    }
                 }
             }
             cleanupExpiredSessions();

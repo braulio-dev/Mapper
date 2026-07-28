@@ -84,6 +84,7 @@ public class MapperCommand {
         line(sender, "/mapper export [strategy]", "Export to a timestamped file. Defaults to JSON.");
         line(sender, "/mapper list [filter]", "Browse the regions in the session.");
         line(sender, "/mapper goto <region>", "Teleport to a region.");
+        line(sender, "/mapper paste [name]", "Paste what the Region Clipboard copied.");
         line(sender, "/mapper metadata", "Change this world's metadata.");
         line(sender, "/mapper tags <region>", "List the tags available for a region name.");
         sender.sendMessage(Component.text("Region tools: ", NamedTextColor.GOLD)

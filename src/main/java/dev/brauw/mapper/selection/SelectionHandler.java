@@ -8,6 +8,7 @@ import dev.brauw.mapper.region.PointRegion;
 import dev.brauw.mapper.region.PolygonRegion;
 import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.region.RegionOptions;
+import dev.brauw.mapper.region.RegionTransform;
 import dev.brauw.mapper.session.EditSession;
 import dev.brauw.mapper.tag.TagRegistry;
 import dev.brauw.mapper.util.RegionFormat;
@@ -20,6 +21,7 @@ import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
 import org.bukkit.util.RayTraceResult;
+import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -47,6 +49,7 @@ public class SelectionHandler {
 
     private final GuiManager guiManager;
     private final TagRegistry tagRegistry;
+    private final RegionClipboard clipboard;
     private final Map<Player, SelectionCorners> selections = new WeakHashMap<>();
     private final Map<Player, List<CuboidRegion>> polygonSelections = new WeakHashMap<>();
     private final Map<Player, List<Location>> pathSelections = new WeakHashMap<>();
@@ -416,6 +419,66 @@ public class SelectionHandler {
         actor.playSound(actor.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.0f);
         session.broadcastExcept(actor, Component.text(actor.getName() + " deleted ", NamedTextColor.GRAY)
                 .append(RegionFormat.describe(region)));
+    }
+
+    /**
+     * Copies the region the player is looking at into their clipboard.
+     *
+     * @param session the session to search
+     * @param actor   the acting player
+     */
+    public void handleCopy(EditSession session, Player actor) {
+        final Location location = getTargetPoint(actor);
+        if (location == null) return;
+
+        findRegionAt(session, location)
+                .ifPresentOrElse(region -> copyRegion(actor, region), () -> notifyNoRegion(actor));
+    }
+
+    /**
+     * Copies a region that has already been resolved (e.g. from clicking its display entity).
+     *
+     * @param actor  the acting player
+     * @param region the region to copy
+     */
+    public void copyRegion(Player actor, Region region) {
+        clipboard.copy(actor, region);
+        actor.sendMessage(Component.text("Copied ", NamedTextColor.GREEN)
+                .append(RegionFormat.describe(region))
+                .append(Component.text(" - sneak and right-click to paste", NamedTextColor.GRAY)));
+        actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 1.6f);
+    }
+
+    /**
+     * Places a copy of the player's clipboard at their feet.
+     * <p>
+     * The copy takes a fresh id, so the two are separate datapoints rather than one written twice,
+     * and is re-homed onto the session's world: a region copied in one world and pasted in another
+     * would otherwise carry its old world and make the whole set unsaveable.
+     *
+     * @param session the session to paste into
+     * @param actor   the acting player
+     * @param name    the name for the copy, or {@code null} to keep the original's
+     */
+    public void handlePaste(EditSession session, Player actor, @Nullable String name) {
+        final Region source = clipboard.get(actor);
+        if (source == null) {
+            actor.sendMessage(Component.text("Nothing copied yet - right-click a region first.", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        final Vector delta = actor.getLocation().toVector()
+                .subtract(RegionTransform.anchor(source).toVector());
+        final Region pasted = RegionTransform.duplicate(source, delta, name == null ? source.getName() : name);
+        pasted.setWorld(session.getWorld());
+
+        session.addRegion(pasted);
+        actor.sendMessage(Component.text("Pasted ", NamedTextColor.GREEN)
+                .append(RegionFormat.describe(pasted)));
+        actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 2.0f);
+        session.broadcastExcept(actor, Component.text(actor.getName() + " pasted ", NamedTextColor.GRAY)
+                .append(RegionFormat.describe(pasted)));
     }
 
     /**
