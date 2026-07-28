@@ -194,7 +194,7 @@ public class RegionToolListener implements Listener {
         if (event.getAction().isRightClick() && player.isSneaking()) {
             selectionHandler.createPathRegion(session, player, null);
         } else if (event.getAction().isRightClick()) {
-            selectionHandler.addPathPoint(player, event.getInteractionPoint());
+            selectionHandler.addPathPoint(player, player.getLocation());
         } else if (event.getAction().isLeftClick()) {
             selectionHandler.undoPathPoint(player);
         }

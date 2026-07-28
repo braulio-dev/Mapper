@@ -143,7 +143,7 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
 
         for (int index = 0; index < points.size(); index++) {
             final Location point = points.get(index);
-            spawned.add(spawnMarker(point, color, 0.3f));
+            spawned.add(spawnMarker(point.clone().add(0, 0.1, 0), color, 0.6f));
             // Only the first waypoint carries the region name; repeating it at every point would bury
             // the ordinals, which are what a builder is actually reading.
             final String text = index == 0 ? region.getName() + " #1" : "#" + (index + 1);
@@ -170,7 +170,11 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
                     from.getX() + dx * progress,
                     from.getY() + dy * progress,
                     from.getZ() + dz * progress);
-            out.add(spawnMarker(at, color, 0.12f));
+
+            // set direction to next
+            at.setDirection(to.toVector().subtract(from.toVector()));
+
+            out.add(spawnMarker(at, color, 0.3f));
         }
     }
 
@@ -181,9 +185,11 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
             spawned.setGlowColorOverride(color);
             spawned.setVisibleByDefault(false);
             spawned.setPersistent(false);
+            // An end rod models along its own +Y, so it stands upright at pitch 0. Tilting 90 degrees
+            // about local X maps +Y onto +Z, laying the rod flat along the marker's forward direction.
             spawned.setTransformation(new Transformation(
                     new Vector3f(),
-                    new AxisAngle4f(),
+                    new AxisAngle4f((float) Math.toRadians(90), 1, 0, 0),
                     new Vector3f(scale),
                     new AxisAngle4f()
             ));
