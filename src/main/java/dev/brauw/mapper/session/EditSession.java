@@ -75,19 +75,12 @@ public class EditSession {
     }
 
     /**
-     * @return whether this player is a member allowed to change regions
+     * @return whether this player is a member allowed to change regions, save them, or close the
+     * session
      */
     public boolean canEdit(Player player) {
         final SessionMember member = getMember(player);
         return member != null && member.canEdit();
-    }
-
-    /**
-     * @return whether this player is a member allowed to save, discard or re-role others
-     */
-    public boolean canManage(Player player) {
-        final SessionMember member = getMember(player);
-        return member != null && member.canManage();
     }
 
     /**

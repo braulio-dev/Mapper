@@ -188,7 +188,9 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
         final ArmorStand entity = displays.get(region);
         final TextDisplay label = labels.get(region);
         if (entity == null || !entity.isValid() || label == null || !label.isValid()) {
-            update(region);
+            if (RegionDisplayStrategy.canSpawnAt(region.getLocation())) {
+                update(region);
+            }
             return;
         }
 
@@ -234,13 +236,18 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
         return online;
     }
 
+    /**
+     * Removal is unconditional. {@code isValid()} is false for an entity whose chunk is merely
+     * unloaded, and dropping the map entry without removing such an entity strands it in the world
+     * with nothing left holding a reference to it.
+     */
     private void despawn(PointRegion region) {
         final ArmorStand armorStand = displays.remove(region);
-        if (armorStand != null && armorStand.isValid()) {
+        if (armorStand != null) {
             armorStand.remove();
         }
         final TextDisplay label = labels.remove(region);
-        if (label != null && label.isValid()) {
+        if (label != null) {
             label.remove();
         }
     }

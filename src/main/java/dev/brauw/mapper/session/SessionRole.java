@@ -7,30 +7,24 @@ import net.kyori.adventure.text.format.NamedTextColor;
 /**
  * What a member is allowed to do inside an {@link EditSession}.
  * <p>
- * A session belongs to a world rather than to a person, so "who started it" is not a permission
- * model on its own - everyone editing the same world shares one region list. Roles are how that
- * shared list stays governable: an {@link #OWNER} decides when the world is written to disk, an
- * {@link #EDITOR} shapes it, and a {@link #VIEWER} watches without being able to change anything.
+ * A session belongs to a world rather than to a person, so "who started it" carries no privilege -
+ * everyone editing the same world shares one region list, and anyone shaping it may also write it
+ * out. The only distinction left is whether you are here to change the world or to watch someone
+ * else change it.
  */
 @Getter
 @RequiredArgsConstructor
 public enum SessionRole {
 
-    /** Started the session. May edit, and may save, discard or change other members' roles. */
-    OWNER("Owner", NamedTextColor.GOLD, true, true),
-
-    /** May create, move and delete regions, but not save or end the session. */
-    EDITOR("Editor", NamedTextColor.GREEN, true, false),
+    /** May create, move and delete regions, and may save, close or re-role the session. */
+    EDITOR("Editor", NamedTextColor.GREEN, true),
 
     /** Sees every region and every change live, and may change nothing. */
-    VIEWER("Viewer", NamedTextColor.AQUA, false, false);
+    VIEWER("Viewer", NamedTextColor.AQUA, false);
 
     private final String displayName;
     private final NamedTextColor color;
 
-    /** Whether this role may add, modify or remove regions. */
+    /** Whether this role may add, modify or remove regions, save them, or close the session. */
     private final boolean canEdit;
-
-    /** Whether this role may save, discard, or change another member's role. */
-    private final boolean canManage;
 }

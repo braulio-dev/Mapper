@@ -3,7 +3,6 @@ package dev.brauw.mapper.command;
 import dev.brauw.mapper.Mapper;
 import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.session.EditSession;
-import dev.brauw.mapper.session.SessionMember;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
@@ -38,19 +37,6 @@ public class MapperSuggestions {
         return session.getRegions().stream()
                 .map(Region::getName)
                 .distinct()
-                .sorted()
-                .toList();
-    }
-
-    /** Suggests the members of the runner's session, which is who {@code /mapper role} can act on. */
-    @Suggestions("sessionMembers")
-    public List<String> sessionMembers(CommandContext<CommandSourceStack> context, String input) {
-        final EditSession session = sessionOf(context);
-        if (session == null) {
-            return List.of();
-        }
-        return session.getMembers().stream()
-                .map(SessionMember::getName)
                 .sorted()
                 .toList();
     }

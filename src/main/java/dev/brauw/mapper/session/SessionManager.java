@@ -71,23 +71,32 @@ public class SessionManager {
     private void startRevalidateTask() {
         this.revalidateTask = mapper.getTaskScheduler().scheduleRecurringTask(() -> {
             for (EditSession session : List.copyOf(sessions.values())) {
-                if (session.onlinePlayers().isEmpty()) {
-                    continue;
-                }
-                for (Region region : session.getRegions()) {
-                    try {
-                        getDisplayStrategy(region).revalidate(region);
-                    } catch (RuntimeException exception) {
-                        // Isolated per region: this sweep is what re-shows displays after a chunk
-                        // cycles, so letting one region's failure abort the pass would leave every
-                        // region after it in the list invisible, intermittently and for no visible
-                        // reason.
-                        log.severe("Failed to revalidate region '" + region.getName() + "': " + exception);
-                    }
-                }
+                revalidate(session);
             }
             cleanupExpiredSessions();
         }, 20L, 20L);
+    }
+
+    /**
+     * Re-checks every region's display entities in one session. A strategy only rebuilds a region
+     * whose chunk is loaded, so this is safe to call as often as it is useful.
+     *
+     * @param session the session to sweep
+     */
+    public void revalidate(EditSession session) {
+        if (session.onlinePlayers().isEmpty()) {
+            return;
+        }
+        for (Region region : session.getRegions()) {
+            try {
+                getDisplayStrategy(region).revalidate(region);
+            } catch (RuntimeException exception) {
+                // Isolated per region: this sweep is what re-shows displays after a chunk cycles, so
+                // letting one region's failure abort the pass would leave every region after it in
+                // the list invisible, intermittently and for no visible reason.
+                log.severe("Failed to revalidate region '" + region.getName() + "': " + exception);
+            }
+        }
     }
 
     private void createDisplayStrategies() {
@@ -149,11 +158,11 @@ public class SessionManager {
      * Puts a player into the session for the world they are standing in, opening that session if it
      * is the first one there.
      * <p>
-     * The role is only honoured when a session already exists: whoever opens one is its
-     * {@link SessionRole#OWNER}, because a session with nobody able to save it would be a dead end.
+     * Opening a session confers nothing extra. Every {@link SessionRole#EDITOR} may save and close
+     * it, so a session never depends on one particular member being present to be finishable.
      *
-     * @param player       the joining player
-     * @param requestedRole the role to join with, if the session already exists
+     * @param player        the joining player
+     * @param requestedRole the role to join with
      * @return the member record for this player
      */
     public SessionMember join(Player player, SessionRole requestedRole) {
@@ -171,10 +180,9 @@ public class SessionManager {
             new SessionCreateEvent(session).callEvent();
         }
 
-        final SessionRole role = created ? SessionRole.OWNER : requestedRole;
-        final SessionMember member = session.join(player, role);
+        final SessionMember member = session.join(player, requestedRole);
         membership.put(player.getUniqueId(), world.getUID());
-        new SessionJoinEvent(session, player, role).callEvent();
+        new SessionJoinEvent(session, player, requestedRole).callEvent();
         return member;
     }
 

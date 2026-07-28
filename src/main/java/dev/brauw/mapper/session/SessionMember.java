@@ -46,8 +46,4 @@ public class SessionMember {
     public boolean canEdit() {
         return role.isCanEdit();
     }
-
-    public boolean canManage() {
-        return role.isCanManage();
-    }
 }

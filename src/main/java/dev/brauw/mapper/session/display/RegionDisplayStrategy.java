@@ -1,6 +1,8 @@
 package dev.brauw.mapper.session.display;
 
 import dev.brauw.mapper.region.Region;
+import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
@@ -47,4 +49,14 @@ public interface RegionDisplayStrategy<T extends Region> {
      * @param player The player to remove the region from.
      */
     void hide(@NotNull T region, @NotNull Player player);
+
+    /**
+     * @return whether a display entity spawned here would actually start tracking. An entity spawned
+     * into an unloaded chunk is registered but never becomes {@code isValid()}, so rebuilding one
+     * there means rebuilding it again on every sweep for as long as nobody is nearby.
+     */
+    static boolean canSpawnAt(@NotNull Location location) {
+        final World world = location.getWorld();
+        return world != null && world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4);
+    }
 }

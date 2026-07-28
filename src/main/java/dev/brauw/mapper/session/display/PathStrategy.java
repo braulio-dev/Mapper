@@ -81,7 +81,11 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
 
         final List<Entity> existing = parts.get(region);
         if (existing == null || !existing.stream().allMatch(Entity::isValid)) {
-            update(region);
+            // Every waypoint, not just the first: a path's markers are spread across chunks, so a
+            // rebuild is only worth doing once all of them can hold an entity that will track.
+            if (region.getPoints().stream().allMatch(RegionDisplayStrategy::canSpawnAt)) {
+                update(region);
+            }
             return;
         }
 
@@ -206,14 +210,17 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
         });
     }
 
+    /**
+     * Removal is unconditional. {@code isValid()} is false for an entity whose chunk is merely
+     * unloaded, and dropping the list without removing such an entity strands it in the world with
+     * nothing left holding a reference to it.
+     */
     private void despawn(List<Entity> entities) {
         if (entities == null) {
             return;
         }
         for (Entity entity : entities) {
-            if (entity.isValid()) {
-                entity.remove();
-            }
+            entity.remove();
         }
     }
 }

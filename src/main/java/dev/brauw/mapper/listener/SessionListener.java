@@ -15,6 +15,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.world.EntitiesLoadEvent;
 
 /**
  * Keeps a member's tools and region displays in step with their membership.
@@ -63,6 +64,20 @@ public class SessionListener implements Listener {
         final Player player = event.getPlayer();
         if (mapper.getSessionManager().hasSession(player)) {
             toolManager.removeTools(player);
+        }
+    }
+
+    /**
+     * Rebuilds displays the moment a chunk can hold them again. Display entities are not persistent,
+     * so a chunk cycling takes them with it, and a strategy refuses to respawn into a chunk that is
+     * not loaded. Without this the repair would wait for the next once-a-second sweep, which is long
+     * enough to see a region blink out as you walk back towards it.
+     */
+    @EventHandler
+    public void onEntitiesLoad(EntitiesLoadEvent event) {
+        final EditSession session = mapper.getSessionManager().getSession(event.getWorld());
+        if (session != null) {
+            mapper.getSessionManager().revalidate(session);
         }
     }
 

@@ -138,7 +138,9 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         // Missing counts as stale, not as "nothing to do". A viewer with no entity is exactly the
         // state a region ends up in when its chunk unloaded and something dropped the entry.
         if (entity == null || !entity.isValid() || label == null || !label.isValid()) {
-            update(region);
+            if (RegionDisplayStrategy.canSpawnAt(region.getMin())) {
+                update(region);
+            }
             return;
         }
 
@@ -185,13 +187,18 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         return online;
     }
 
+    /**
+     * Removal is unconditional. {@code isValid()} is false for an entity whose chunk is merely
+     * unloaded, and dropping the map entry without removing such an entity strands it in the world
+     * with nothing left holding a reference to it.
+     */
     private void despawn(CuboidRegion region) {
         final BlockDisplay display = displays.remove(region);
-        if (display != null && display.isValid()) {
+        if (display != null) {
             display.remove();
         }
         final TextDisplay label = labels.remove(region);
-        if (label != null && label.isValid()) {
+        if (label != null) {
             label.remove();
         }
     }

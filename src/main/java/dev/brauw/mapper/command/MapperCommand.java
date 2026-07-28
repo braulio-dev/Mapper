@@ -23,7 +23,6 @@ import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.World;
@@ -76,9 +75,7 @@ public class MapperCommand {
         line(sender, "/mapper edit", "Join or start this world's editing session.");
         line(sender, "/mapper watch", "Join this world's session as a viewer.");
         line(sender, "/mapper session", "Show who is editing and how much is unsaved.");
-        line(sender, "/mapper role <player> <role>", "Change a member's role. Owner only.");
         line(sender, "/mapper leave", "Leave the session, leaving it open for the others.");
-        line(sender, "/mapper close", "End the session for everyone. Owner only.");
         line(sender, "/mapper save", "Validate and write this world's regions to disk.");
         line(sender, "/mapper validate", "Report problems without saving.");
         line(sender, "/mapper export [strategy]", "Export to a timestamped file. Defaults to JSON.");
@@ -155,8 +152,7 @@ public class MapperCommand {
 
         final boolean opening = sessionManager.getSession(player.getWorld()) == null;
         if (opening && !role.isCanEdit()) {
-            // Whoever opens a session becomes its owner, so letting a viewer open one would produce
-            // a session nobody can save. There is also nothing to watch yet.
+            // Nothing to watch yet, and a session of viewers alone could never be saved.
             support.deny(player, "Nobody is editing this world. Use /mapper edit to start.");
             return;
         }
@@ -211,45 +207,6 @@ public class MapperCommand {
         }
     }
 
-    @Command("role <player> <role>")
-    public void role(CommandSourceStack source,
-                     @Argument(value = "player", suggestions = "sessionMembers") String playerName,
-                     @Argument("role") SessionRole role) {
-        final Player player = support.player(source, "change roles");
-        if (player == null) return;
-        final EditSession session = support.managing(player);
-        if (session == null) return;
-
-        final Player target = Bukkit.getPlayerExact(playerName);
-        if (target == null) {
-            support.deny(player, playerName + " is not online.");
-            return;
-        }
-
-        final SessionMember member = session.getMember(target);
-        if (member == null) {
-            support.deny(player, target.getName() + " is not in this session.");
-            return;
-        }
-        if (member.getPlayerId().equals(player.getUniqueId())) {
-            support.deny(player, "You cannot change your own role.");
-            return;
-        }
-
-        member.setRole(role);
-        support.confirm(player, Component.text(target.getName() + " is now ", NamedTextColor.GREEN)
-                .append(Component.text(role.getDisplayName(), role.getColor())));
-        target.sendMessage(Messages.PREFIX.append(Component.text("You are now ", NamedTextColor.GRAY))
-                .append(Component.text(role.getDisplayName(), role.getColor())));
-
-        // Tools follow the role, so a demoted editor stops holding wands they can no longer use.
-        if (role.isCanEdit()) {
-            mapper.getRegionToolManager().giveTools(target);
-        } else {
-            mapper.getRegionToolManager().removeTools(target);
-        }
-    }
-
     @Command("leave")
     public void leave(CommandSourceStack source) {
         final Player player = support.player(source, "leave a session");
@@ -265,24 +222,6 @@ public class MapperCommand {
         support.confirm(player, last
                 ? Component.text("You left, and the session closed. Unsaved regions were discarded.", NamedTextColor.YELLOW)
                 : Component.text("You left the session. The others are still editing.", NamedTextColor.GREEN));
-    }
-
-    @Command("close")
-    public void close(CommandSourceStack source) {
-        final Player player = support.player(source, "close a session");
-        if (player == null) return;
-        final EditSession session = support.managing(player);
-        if (session == null) return;
-
-        session.broadcast(Messages.PREFIX.append(
-                Component.text(player.getName() + " closed the session. Unsaved regions are gone.", NamedTextColor.YELLOW)));
-        mapper.getSessionManager().end(session);
-    }
-
-    /** Kept as the old name for {@link #close}, which is what it always did. */
-    @Command("discard")
-    public void discard(CommandSourceStack source) {
-        close(source);
     }
 
     @Command("save")
@@ -307,7 +246,7 @@ public class MapperCommand {
     private void performSave(CommandSourceStack source, boolean force) {
         final Player player = support.player(source, "save regions");
         if (player == null) return;
-        final EditSession session = support.managing(player);
+        final EditSession session = support.editing(player);
         if (session == null) return;
 
         final List<Region> regions = session.getRegions();

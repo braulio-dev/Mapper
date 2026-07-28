@@ -57,6 +57,10 @@ public class CommandSupport {
     }
 
     /**
+     * The one permission check in the plugin: a member either shapes this world or watches it. Save
+     * and close sit behind this same gate rather than a higher one, so a session is always
+     * finishable by whoever is actually still in it.
+     *
      * @return the player's session if they may change it, or {@code null} after explaining why not
      */
     public @Nullable EditSession editing(Player player) {
@@ -88,21 +92,6 @@ public class CommandSupport {
         }
         if (!session.getWorld().equals(player.getWorld())) {
             deny(player, "Your session is in " + session.getWorld().getName() + ". Go back there first.");
-            return null;
-        }
-        return session;
-    }
-
-    /**
-     * @return the player's session if they may save or close it, or {@code null} after explaining
-     */
-    public @Nullable EditSession managing(Player player) {
-        final EditSession session = session(player);
-        if (session == null) {
-            return null;
-        }
-        if (!session.canManage(player)) {
-            deny(player, "Only the session owner can do that.");
             return null;
         }
         return session;

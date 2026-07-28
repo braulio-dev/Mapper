@@ -38,7 +38,7 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
         this.blockStrategy = blockStrategy;
     }
 
-    private TextDisplay getLabel(PolygonRegion region) {
+    private Location labelLocation(PolygonRegion region) {
         final List<CuboidRegion> children = region.getChildren();
         double minX = children.stream().mapToDouble(c -> c.getMin().getX()).min().orElse(0);
         double maxX = children.stream().mapToDouble(c -> c.getMax().getX()).max().orElse(0);
@@ -46,12 +46,16 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
         double maxZ = children.stream().mapToDouble(c -> c.getMax().getZ()).max().orElse(0);
         double maxY = children.stream().mapToDouble(c -> c.getMax().getY()).max().orElse(0);
 
-        final Location labelLocation = new Location(
+        return new Location(
                 region.getWorld(),
                 (minX + maxX) / 2,
                 maxY + 0.5,
                 (minZ + maxZ) / 2
         );
+    }
+
+    private TextDisplay getLabel(PolygonRegion region) {
+        final Location labelLocation = labelLocation(region);
         final Color color = region.getOptions().getColor().getBukkitColor();
 
         final TextDisplay existingLabel = labels.get(region);
@@ -78,8 +82,10 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
     public void update(@NotNull PolygonRegion region) {
         region.getChildren().forEach(blockStrategy::update);
 
+        // Removal is unconditional: isValid() is false for an entity whose chunk is merely unloaded,
+        // and dropping the map entry without removing it strands the label in the world.
         final TextDisplay removedLabel = labels.remove(region);
-        if (removedLabel != null && removedLabel.isValid()) {
+        if (removedLabel != null) {
             removedLabel.remove();
         }
         final TextDisplay label = getLabel(region);
@@ -99,7 +105,9 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
 
         final TextDisplay label = labels.get(region);
         if (label == null || !label.isValid()) {
-            update(region);
+            if (RegionDisplayStrategy.canSpawnAt(labelLocation(region))) {
+                update(region);
+            }
             return;
         }
 
@@ -135,7 +143,7 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
 
             if (viewers.get(region).isEmpty()) {
                 final TextDisplay removedLabel = labels.remove(region);
-                if (removedLabel != null && removedLabel.isValid()) {
+                if (removedLabel != null) {
                     removedLabel.remove();
                 }
             }
