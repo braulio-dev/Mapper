@@ -1,10 +1,11 @@
 package dev.brauw.mapper.session.display;
 
-import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import dev.brauw.mapper.region.PathRegion;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+
 /**
  * Renders a path region as numbered waypoint markers joined by a dotted trail.
  * <p>
@@ -44,7 +46,7 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
     private static final int MAX_DOTS_PER_SEGMENT = 24;
 
     private final Map<PathRegion, List<Entity>> parts = new HashMap<>();
-    private final Multimap<PathRegion, UUID> viewers = ArrayListMultimap.create();
+    private final Multimap<PathRegion, UUID> viewers = HashMultimap.create();
     private final Plugin plugin;
 
     public PathStrategy(Plugin plugin) {
@@ -60,21 +62,34 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
     }
 
     @Override
-    public void update(@NotNull PathRegion region, @NotNull Player player) {
+    public void update(@NotNull PathRegion region) {
         despawn(parts.remove(region));
-        display(region, player);
+        final List<Entity> rebuilt = getParts(region);
+        for (Player viewer : viewersOf(region)) {
+            for (Entity part : rebuilt) {
+                viewer.showEntity(plugin, part);
+            }
+        }
     }
 
     @Override
-    public void revalidate(@NotNull PathRegion region, @NotNull Player player) {
+    public void revalidate(@NotNull PathRegion region) {
         final List<Entity> existing = parts.get(region);
-        if (existing == null || existing.stream().allMatch(Entity::isValid)) {
-            return;
+        if (existing != null && !existing.stream().allMatch(Entity::isValid)) {
+            update(region);
         }
-        despawn(parts.remove(region));
-        for (Entity part : getParts(region)) {
-            player.showEntity(plugin, part);
+    }
+
+    /** @return the online players currently viewing this region */
+    private List<Player> viewersOf(PathRegion region) {
+        final List<Player> online = new ArrayList<>();
+        for (UUID viewerId : viewers.get(region)) {
+            final Player viewer = Bukkit.getPlayer(viewerId);
+            if (viewer != null) {
+                online.add(viewer);
+            }
         }
+        return online;
     }
 
     @Override

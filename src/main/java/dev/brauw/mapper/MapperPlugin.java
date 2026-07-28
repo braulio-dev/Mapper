@@ -39,6 +39,9 @@ public class MapperPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (Mapper.isInitialized()) {
+            Mapper.get().shutdown();
+        }
         log.info("Mapper plugin disabled!");
     }
 }

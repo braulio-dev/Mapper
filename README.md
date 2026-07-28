@@ -16,18 +16,26 @@ Mapper allows server administrators and world editors to define various types of
 
 - **Multiple Region Types**
     - Point Regions
-    - Perspective Regions
+    - Perspective Regions (a point plus a facing)
     - Cuboid Regions
     - Polygon Regions
+    - Path Regions (an ordered route)
 
 - **Intuitive Tools**
     - Special tools for creating each type of region
     - Simple selection interface for cuboid regions
     - Point-and-click creation for simple regions
     - Region deletion tool
+    - A command for every tool, for when you want to name a region without a prompt
+
+- **Collaborative Editing**
+    - One session per world, shared by everyone editing it
+    - Owner / Editor / Viewer roles
+    - Every change is shown to the other members as it happens
 
 - **Data Management**
-    - Session-based editing
+    - Tags, registered by consuming plugins or written free-form
+    - Validation before save, extensible by consumers
     - JSON export/import
     - Persistent storage of regions
 
@@ -65,20 +73,74 @@ Mapper allows server administrators and world editors to define various types of
 4. Repeat steps 1-3 for each additional part
 5. Shift + Right-click again without an active corner pair to finalize the polygon
 
+### Editing Together
+
+A session belongs to a **world**, not to a player. `/mapper edit` joins the session for the world
+you are standing in, opening it if nobody is editing there yet. Everyone in it shares one set of
+regions and sees each other's changes immediately.
+
+This is why the regions file is only read when the session opens: two editors loading their own
+private copy of the same file is how one person's work gets silently overwritten by the other's save.
+
+Whoever opens a session is its **Owner** and is the only one who can save or close it. Later joiners
+are **Editors**. `/mapper watch` joins as a **Viewer**, who sees everything and can change nothing.
+Use `/mapper role <player> <role>` to change that.
+
+`/mapper leave` leaves the session running for everyone else; `/mapper close` ends it for all.
+
 ### Saving Your Work
 
-When you're done creating regions:
-1. Save your work with `/mapper save [strategy]` (defaults to JSON)
-2. Or discard your changes with `/mapper discard`
+`/mapper save` validates the regions and writes them to the world folder. The session stays open, so
+a save is a checkpoint rather than the end of everyone else's work.
+
+Validation errors block the save; run `/mapper save force` to write anyway. Warnings are reported
+and saved. Every reported problem is clickable and teleports you to the region it is about.
 
 ## Commands
 
-| Command                   | Description                           |
-|---------------------------|---------------------------------------|
-| `/mapper help`            | Shows the help menu                   |
-| `/mapper edit`            | Starts a new editing session          |
-| `/mapper save [strategy]` | Saves your regions (defaults to JSON) |
-| `/mapper discard`         | Discards your current editing session |
+### Session
+
+| Command                       | Description                                            |
+|-------------------------------|--------------------------------------------------------|
+| `/mapper edit`                | Join or start this world's session, as an editor       |
+| `/mapper watch`               | Join this world's session as a viewer                  |
+| `/mapper session`             | Show who is editing and how many regions are loaded    |
+| `/mapper role <player> <role>`| Change a member's role (owner only)                    |
+| `/mapper leave`               | Leave, leaving the session open for the others         |
+| `/mapper close`               | End the session for everyone (owner only)              |
+| `/mapper save [force]`        | Validate and write the regions (owner only)            |
+| `/mapper validate`            | Report problems without saving                         |
+| `/mapper export [strategy]`   | Export to a timestamped file. Defaults to JSON         |
+
+### Finding regions
+
+| Command                  | Description                                        |
+|--------------------------|----------------------------------------------------|
+| `/mapper list [filter]`  | Browse the session's regions, filtered by name/tag |
+| `/mapper goto <region>`  | Teleport to a region                               |
+| `/mapper tags <region>`  | List the tags available for a region name          |
+| `/mapper pick <n>`       | Answer a "which one did you mean" prompt           |
+
+### Creating and editing
+
+| Command                              | Description                                        |
+|--------------------------------------|----------------------------------------------------|
+| `/mapper pos1` / `/mapper pos2`      | Set the cuboid corners you are looking at          |
+| `/mapper cuboid [name]`              | Create a cuboid from those corners                 |
+| `/mapper point [name]`               | Create a point where you stand                     |
+| `/mapper perspective [name]`         | Create a point that also records your facing       |
+| `/mapper polygon add\|create [name]` | Add a polygon part, or finish the polygon          |
+| `/mapper path add\|undo\|create [name]` | Append, undo or finish a path                   |
+| `/mapper cancel`                     | Clear your in-progress selection                   |
+| `/mapper delete <region>`            | Delete a region by name                            |
+| `/mapper tag <region>`               | Open a region's tag editor                         |
+| `/mapper copy <region> [name]`       | Duplicate a region at your feet                    |
+| `/mapper offset <region> <x> <y> <z>`| Move a region by an exact delta                    |
+| `/mapper mirror <region> <axis>`     | Mirror a region across the plane you stand on      |
+
+Region names are not unique on purpose - a world holds many `npc_resident` points. Any command that
+names an ambiguous region lists every match with its coordinates and tags rather than guessing, and
+you pick the one you meant.
 
 ## Permissions
 
@@ -86,6 +148,19 @@ When you're done creating regions:
 
 ## Technical Details
 
-Regions are stored in the world folder as `dataPoints.json`. The plugin uses Jackson for serialization and deserialization of region data.
+Regions are stored in the world folder as `dataPoints.json`. The plugin uses Jackson for
+serialization and deserialization of region data.
 
-For developers: The plugin provides a clean API for working with regions through the Region interface and supporting classes.
+### For developers
+
+The plugin provides a clean API for working with regions through the `Region` interface and
+supporting classes. Three extension points are worth knowing about:
+
+- **`TagRegistry`** - register `Tag` definitions so builders get a curated, validated vocabulary in
+  the tag editor instead of typing free-form strings.
+- **`ValidationRegistry`** - register a `RegionValidator` to enforce your own rules at save time.
+  Mapper only knows the rules that hold for any map; that an `npc_route` needs an `order`, or that a
+  `route:` must name a resident that exists, is yours to state. A problem reported here surfaces next
+  to the region that caused it, rather than hours later as a stack trace during world load.
+- **`RegionsSavedEvent`** - fired after a world's regions are written. Listen to it to reload
+  whatever you derive from the file without restarting the server.

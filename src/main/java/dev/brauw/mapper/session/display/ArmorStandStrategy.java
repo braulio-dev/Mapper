@@ -1,6 +1,6 @@
 package dev.brauw.mapper.session.display;
 
-import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import dev.brauw.mapper.region.PointRegion;
 import io.papermc.paper.entity.LookAnchor;
@@ -21,9 +21,10 @@ import org.bukkit.scoreboard.Team;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -33,7 +34,7 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
 
     private final Map<PointRegion, ArmorStand> displays = new HashMap<>();
     private final Map<PointRegion, TextDisplay> labels = new HashMap<>();
-    private final Multimap<PointRegion, UUID> viewers = ArrayListMultimap.create();
+    private final Multimap<PointRegion, UUID> viewers = HashMultimap.create();
     private final Map<UUID, Map<PointRegion, String>> playerTeams = new HashMap<>();
     private final Plugin plugin;
     private final NamespacedKey regionIdKey;
@@ -160,61 +161,74 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
     }
 
     @Override
-    public void update(@NotNull PointRegion region, @NotNull Player player) {
-        final ArmorStand removed = displays.remove(region);
-        if (removed != null && removed.isValid()) {
-            cleanupTeamForPlayer(region, player);
-            removed.remove();
+    public void update(@NotNull PointRegion region) {
+        final List<Player> currentViewers = viewersOf(region);
+        // The team entry names the old armor stand's UUID, so it has to go before the stand does.
+        for (Player viewer : currentViewers) {
+            cleanupTeamForPlayer(region, viewer);
         }
-        final TextDisplay removedLabel = labels.remove(region);
-        if (removedLabel != null && removedLabel.isValid()) {
-            removedLabel.remove();
+        despawn(region);
+
+        final ArmorStand armorStand = getEntity(region);
+        final TextDisplay label = getLabel(region);
+        for (Player viewer : currentViewers) {
+            viewer.showEntity(plugin, armorStand);
+            viewer.showEntity(plugin, label);
+            setupTeamForPlayer(region, viewer, armorStand);
         }
-        display(region, player);
     }
 
     @Override
-    public void revalidate(@NotNull PointRegion region, @NotNull Player player) {
+    public void revalidate(@NotNull PointRegion region) {
         final ArmorStand entity = displays.get(region);
         final TextDisplay label = labels.get(region);
-        boolean needsRefresh = (entity != null && !entity.isValid()) || (label != null && !label.isValid());
-        if (needsRefresh) {
-            if (entity != null && !entity.isValid()) displays.remove(region);
-            if (label != null && !label.isValid()) labels.remove(region);
-            final ArmorStand armorStand = getEntity(region);
-            player.showEntity(plugin, armorStand);
-            player.showEntity(plugin, getLabel(region));
-            setupTeamForPlayer(region, player, armorStand);
+        if ((entity != null && !entity.isValid()) || (label != null && !label.isValid())) {
+            update(region);
         }
     }
 
     @Override
     public void hide(@NotNull PointRegion region, @NotNull Player player) {
-        final UUID playerUUID = player.getUniqueId();
-        if (viewers.remove(region, playerUUID)) {
-            // Cleanup the team
-            cleanupTeamForPlayer(region, player);
+        if (!viewers.remove(region, player.getUniqueId())) {
+            return;
+        }
 
-            // Hide entity and label
-            final ArmorStand entity = Objects.requireNonNull(displays.get(region));
+        cleanupTeamForPlayer(region, player);
+
+        final ArmorStand entity = displays.get(region);
+        if (entity != null) {
             player.hideEntity(plugin, entity);
+        }
+        final TextDisplay label = labels.get(region);
+        if (label != null) {
+            player.hideEntity(plugin, label);
+        }
 
-            final TextDisplay label = labels.get(region);
-            if (label != null) {
-                player.hideEntity(plugin, label);
-            }
+        if (viewers.get(region).isEmpty()) {
+            despawn(region);
+        }
+    }
 
-            // If there are no more viewers, remove the displays
-            if (viewers.get(region).isEmpty()) {
-                final ArmorStand armorStand = displays.remove(region);
-                if (armorStand != null && armorStand.isValid()) {
-                    armorStand.remove();
-                }
-                final TextDisplay removedLabel = labels.remove(region);
-                if (removedLabel != null && removedLabel.isValid()) {
-                    removedLabel.remove();
-                }
+    /** @return the online players currently viewing this region */
+    private List<Player> viewersOf(PointRegion region) {
+        final List<Player> online = new ArrayList<>();
+        for (UUID viewerId : viewers.get(region)) {
+            final Player viewer = Bukkit.getPlayer(viewerId);
+            if (viewer != null) {
+                online.add(viewer);
             }
+        }
+        return online;
+    }
+
+    private void despawn(PointRegion region) {
+        final ArmorStand armorStand = displays.remove(region);
+        if (armorStand != null && armorStand.isValid()) {
+            armorStand.remove();
+        }
+        final TextDisplay label = labels.remove(region);
+        if (label != null && label.isValid()) {
+            label.remove();
         }
     }
 }

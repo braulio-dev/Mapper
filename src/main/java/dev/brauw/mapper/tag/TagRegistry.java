@@ -3,6 +3,7 @@ package dev.brauw.mapper.tag;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 /**
  * Holds the set of known {@link Tag} definitions.
@@ -14,7 +15,24 @@ import java.util.Optional;
  */
 public class TagRegistry {
 
+    /**
+     * The two shapes a concrete tag value may take: a bare marker, or a {@code key:value} pair.
+     * The value half stays permissive because display names live there.
+     */
+    private static final Pattern WELL_FORMED_VALUE = Pattern.compile("[A-Za-z0-9_-]+(:.+)?");
+
     private final List<Tag> tags = new ArrayList<>();
+
+    /**
+     * Checks that a value is one a consumer can parse. Consumers split on the first colon, so
+     * anything else is read as a key with no value and silently ignored.
+     *
+     * @param value the concrete tag value
+     * @return true if the value is a bare marker or a {@code key:value} pair
+     */
+    public static boolean isWellFormedValue(String value) {
+        return value != null && WELL_FORMED_VALUE.matcher(value).matches();
+    }
 
     /**
      * Registers tag definitions, skipping any that are already registered.

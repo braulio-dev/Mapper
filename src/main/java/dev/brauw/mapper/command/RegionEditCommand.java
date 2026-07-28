@@ -1,0 +1,255 @@
+package dev.brauw.mapper.command;
+
+import dev.brauw.mapper.Mapper;
+import dev.brauw.mapper.region.Region;
+import dev.brauw.mapper.region.RegionTransform;
+import dev.brauw.mapper.selection.SelectionHandler;
+import dev.brauw.mapper.session.EditSession;
+import dev.brauw.mapper.util.RegionFormat;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import io.papermc.paper.command.brigadier.CommandSourceStack;
+import org.bukkit.Axis;
+import org.bukkit.Location;
+import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
+import org.incendo.cloud.annotations.Argument;
+import org.incendo.cloud.annotations.Command;
+import org.incendo.cloud.annotations.Default;
+import org.incendo.cloud.annotations.Permission;
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * A command for every region tool, plus the transforms that have no tool.
+ * <p>
+ * The wands stay the fast path for placing something where you are standing and looking. Commands
+ * are for everything they are bad at: naming a region without an anvil prompt, repeating an exact
+ * offset, and acting on a region you can name but are not standing next to.
+ */
+@Command("mapper")
+@Permission("mapper.use")
+public class RegionEditCommand {
+
+    private final Mapper mapper;
+    private final CommandSupport support;
+    private final RegionPrompt prompt;
+
+    public RegionEditCommand(Mapper mapper, CommandSupport support, RegionPrompt prompt) {
+        this.mapper = mapper;
+        this.support = support;
+        this.prompt = prompt;
+    }
+
+    private SelectionHandler selection() {
+        return mapper.getSelectionHandler();
+    }
+
+    @Command("pos1")
+    public void pos1(CommandSourceStack source) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().setFirstPosition(player);
+    }
+
+    @Command("pos2")
+    public void pos2(CommandSourceStack source) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().setSecondPosition(player);
+    }
+
+    @Command("cuboid [name]")
+    public void cuboid(CommandSourceStack source, @Default("") @Argument("name") String name) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().createCuboidRegion(support.editingHere(player), player, orPrompt(name));
+    }
+
+    @Command("point [name]")
+    public void point(CommandSourceStack source, @Default("") @Argument("name") String name) {
+        final Player player = editor(source);
+        if (player == null) return;
+        // No interaction point from a command, so the player's own position is the placement.
+        selection().createPointRegion(support.editingHere(player), player, null, orPrompt(name));
+    }
+
+    @Command("perspective [name]")
+    public void perspective(CommandSourceStack source, @Default("") @Argument("name") String name) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().createPerspectiveRegion(support.editingHere(player), player, null, orPrompt(name));
+    }
+
+    @Command("polygon add")
+    public void polygonAdd(CommandSourceStack source) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().addPolygonChild(player);
+    }
+
+    @Command("polygon create [name]")
+    public void polygonCreate(CommandSourceStack source, @Default("") @Argument("name") String name) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().createPolygonRegion(support.editingHere(player), player, orPrompt(name));
+    }
+
+    @Command("path add")
+    public void pathAdd(CommandSourceStack source) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().addPathPoint(player, null);
+    }
+
+    @Command("path undo")
+    public void pathUndo(CommandSourceStack source) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().undoPathPoint(player);
+    }
+
+    @Command("path create [name]")
+    public void pathCreate(CommandSourceStack source, @Default("") @Argument("name") String name) {
+        final Player player = editor(source);
+        if (player == null) return;
+        selection().createPathRegion(support.editingHere(player), player, orPrompt(name));
+    }
+
+    @Command("cancel")
+    public void cancel(CommandSourceStack source) {
+        final Player player = support.player(source, "cancel a selection");
+        if (player == null) return;
+        selection().clearSelections(player);
+        prompt.clear(player);
+        support.confirm(player, Component.text("Cleared your selection.", NamedTextColor.GREEN));
+    }
+
+    @Command("delete <region>")
+    public void delete(CommandSourceStack source,
+                       @Argument(value = "region", suggestions = "regionNames") String region) {
+        final Player player = editor(source);
+        if (player == null) return;
+        final EditSession session = support.editingHere(player);
+
+        prompt.choose(player, support.matching(session, region), "delete",
+                target -> selection().deleteRegion(session, player, target));
+    }
+
+    @Command("tag <region>")
+    public void tag(CommandSourceStack source,
+                    @Argument(value = "region", suggestions = "regionNames") String region) {
+        final Player player = editor(source);
+        if (player == null) return;
+        final EditSession session = support.editingHere(player);
+
+        prompt.choose(player, support.matching(session, region), "tag",
+                target -> selection().openTagEditor(player, target));
+    }
+
+    /**
+     * Duplicates a region at the player's feet.
+     * <p>
+     * The copy keeps the original's tags and colour but takes a fresh id, so the two are separate
+     * datapoints rather than the same one written twice. Name defaults to the original's, which is
+     * usually what you want - a second {@code npc_resident} is still an {@code npc_resident}.
+     */
+    @Command("copy <region> [name]")
+    public void copy(CommandSourceStack source,
+                     @Argument(value = "region", suggestions = "regionNames") String region,
+                     @Default("") @Argument("name") String name) {
+        final Player player = editor(source);
+        if (player == null) return;
+        final EditSession session = support.editingHere(player);
+
+        prompt.choose(player, support.matching(session, region), "copy", target -> {
+            final Vector delta = player.getLocation().toVector()
+                    .subtract(RegionTransform.anchor(target).toVector());
+            final String copyName = name.isEmpty() ? target.getName() : name;
+            final Region duplicate = RegionTransform.duplicate(target, delta, copyName);
+
+            session.addRegion(duplicate);
+            support.confirm(player, Component.text("Copied to ", NamedTextColor.GREEN)
+                    .append(RegionFormat.describe(duplicate)));
+            session.broadcastExcept(player, Component.text(player.getName() + " copied ", NamedTextColor.GRAY)
+                    .append(RegionFormat.describe(duplicate)));
+        });
+    }
+
+    @Command("offset <region> <x> <y> <z>")
+    public void offset(CommandSourceStack source,
+                       @Argument(value = "region", suggestions = "regionNames") String region,
+                       @Argument("x") double x,
+                       @Argument("y") double y,
+                       @Argument("z") double z) {
+        final Player player = editor(source);
+        if (player == null) return;
+        final EditSession session = support.editingHere(player);
+
+        prompt.choose(player, support.matching(session, region), "move", target -> {
+            final Region moved = RegionTransform.translate(target, new Vector(x, y, z));
+            if (!session.replaceRegion(target, moved)) {
+                support.deny(player, "That region is already gone.");
+                return;
+            }
+            support.confirm(player, Component.text("Moved to ", NamedTextColor.GREEN)
+                    .append(RegionFormat.describe(moved)));
+            session.broadcastExcept(player, Component.text(player.getName() + " moved ", NamedTextColor.GRAY)
+                    .append(RegionFormat.describe(moved)));
+        });
+    }
+
+    /**
+     * Mirrors a region across the plane running through the player on the given axis.
+     * <p>
+     * Standing on the mirror line is how a builder thinks about this - "flip it to the other side of
+     * where I am" - and it avoids having to type a coordinate that has to be exactly right for the
+     * result to line up with the build.
+     */
+    @Command("mirror <region> <axis>")
+    public void mirror(CommandSourceStack source,
+                       @Argument(value = "region", suggestions = "regionNames") String region,
+                       @Argument("axis") Axis axis) {
+        final Player player = editor(source);
+        if (player == null) return;
+        final EditSession session = support.editingHere(player);
+
+        final Location standing = player.getLocation();
+        final double plane = switch (axis) {
+            case X -> standing.getX();
+            case Y -> standing.getY();
+            case Z -> standing.getZ();
+        };
+
+        prompt.choose(player, support.matching(session, region), "mirror", target -> {
+            final Region mirrored = RegionTransform.mirror(target, axis, plane);
+            if (!session.replaceRegion(target, mirrored)) {
+                support.deny(player, "That region is already gone.");
+                return;
+            }
+            support.confirm(player, Component.text("Mirrored across " + axis + " to ", NamedTextColor.GREEN)
+                    .append(RegionFormat.describe(mirrored)));
+            session.broadcastExcept(player, Component.text(player.getName() + " mirrored ", NamedTextColor.GRAY)
+                    .append(RegionFormat.describe(mirrored)));
+        });
+    }
+
+    /**
+     * @return the sender if they are a player who may edit their session, else {@code null} after
+     * they have been told why not
+     */
+    private @Nullable Player editor(CommandSourceStack source) {
+        final Player player = support.player(source, "edit regions");
+        if (player == null) {
+            return null;
+        }
+        return support.editingHere(player) == null ? null : player;
+    }
+
+    /**
+     * @return the typed name, or {@code null} to mean "ask for one in the create GUI" - which is
+     * what an omitted optional name argument arrives as
+     */
+    private @Nullable String orPrompt(String name) {
+        return name == null || name.isEmpty() ? null : name;
+    }
+}

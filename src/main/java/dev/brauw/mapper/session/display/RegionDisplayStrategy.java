@@ -5,37 +5,46 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Marker interface to display a region to the user.
+ * Renders a region to the players editing it.
+ * <p>
+ * A region has <em>one</em> set of display entities shared by every viewer; visibility is granted
+ * per-player with {@code showEntity}/{@code hideEntity} on top of {@code setVisibleByDefault(false)}.
+ * That is why only {@link #display} and {@link #hide} take a player - they change who may see the
+ * entities. {@link #update} and {@link #revalidate} replace the entities themselves, which affects
+ * every viewer at once, so naming a single player there could only mean "and silently break it for
+ * everyone else".
  */
 public interface RegionDisplayStrategy<T extends Region> {
 
     /**
-     * Display the region to the player.
+     * Shows the region to a player, creating its display entities if this is the first viewer.
+     *
      * @param region The region to display.
      * @param player The player to display the region to.
      */
     void display(@NotNull T region, @NotNull Player player);
 
     /**
-     * Updates the region display. This function is called every tick, for
-     * every player, for every region.
-     * @param region The region to update.
-     * @param player The player to update the region for.
+     * Rebuilds the region's display entities and re-shows them to every current viewer. Call after
+     * something about the region itself changed - its shape, colour or name.
+     *
+     * @param region The region to rebuild.
      */
-    void update(@NotNull T region, @NotNull Player player);
+    void update(@NotNull T region);
 
     /**
-     * Remove the region from the player's display.
+     * Rebuilds the region's display entities only if they have become invalid, e.g. because a chunk
+     * unload destroyed the non-persistent entities, and re-shows them to every current viewer.
+     *
+     * @param region The region to check.
+     */
+    void revalidate(@NotNull T region);
+
+    /**
+     * Hides the region from a player, destroying its display entities once the last viewer leaves.
+     *
      * @param region The region to remove.
      * @param player The player to remove the region from.
      */
     void hide(@NotNull T region, @NotNull Player player);
-
-    /**
-     * Re-creates and re-shows display entities that have become invalid
-     * (e.g. due to chunk unloading destroying non-persistent entities).
-     * @param region The region to revalidate.
-     * @param player The player to revalidate for.
-     */
-    void revalidate(@NotNull T region, @NotNull Player player);
 }

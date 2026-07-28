@@ -1,11 +1,12 @@
 package dev.brauw.mapper.session.display;
 
-import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import dev.brauw.mapper.region.CuboidRegion;
 import dev.brauw.mapper.region.PolygonRegion;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.entity.Display;
@@ -14,6 +15,7 @@ import org.bukkit.entity.TextDisplay;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,7 +31,7 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
     private final BlockStrategy blockStrategy;
     private final Plugin plugin;
     private final Map<PolygonRegion, TextDisplay> labels = new HashMap<>();
-    private final Multimap<PolygonRegion, UUID> viewers = ArrayListMultimap.create();
+    private final Multimap<PolygonRegion, UUID> viewers = HashMultimap.create();
 
     public PolygonStrategy(Plugin plugin, BlockStrategy blockStrategy) {
         this.plugin = plugin;
@@ -73,23 +75,39 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
     }
 
     @Override
-    public void update(@NotNull PolygonRegion region, @NotNull Player player) {
-        region.getChildren().forEach(child -> blockStrategy.update(child, player));
+    public void update(@NotNull PolygonRegion region) {
+        region.getChildren().forEach(blockStrategy::update);
+
         final TextDisplay removedLabel = labels.remove(region);
         if (removedLabel != null && removedLabel.isValid()) {
             removedLabel.remove();
         }
-        player.showEntity(plugin, getLabel(region));
+        final TextDisplay label = getLabel(region);
+        for (Player viewer : viewersOf(region)) {
+            viewer.showEntity(plugin, label);
+        }
     }
 
     @Override
-    public void revalidate(@NotNull PolygonRegion region, @NotNull Player player) {
-        region.getChildren().forEach(child -> blockStrategy.revalidate(child, player));
+    public void revalidate(@NotNull PolygonRegion region) {
+        region.getChildren().forEach(blockStrategy::revalidate);
+
         final TextDisplay label = labels.get(region);
         if (label != null && !label.isValid()) {
-            labels.remove(region);
-            player.showEntity(plugin, getLabel(region));
+            update(region);
         }
+    }
+
+    /** @return the online players currently viewing this region */
+    private List<Player> viewersOf(PolygonRegion region) {
+        final List<Player> online = new ArrayList<>();
+        for (UUID viewerId : viewers.get(region)) {
+            final Player viewer = Bukkit.getPlayer(viewerId);
+            if (viewer != null) {
+                online.add(viewer);
+            }
+        }
+        return online;
     }
 
     @Override

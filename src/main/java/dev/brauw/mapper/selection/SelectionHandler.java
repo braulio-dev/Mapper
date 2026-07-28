@@ -3,13 +3,14 @@ package dev.brauw.mapper.selection;
 import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.region.CuboidRegion;
 import dev.brauw.mapper.region.PathRegion;
+import dev.brauw.mapper.region.PerspectiveRegion;
 import dev.brauw.mapper.region.PointRegion;
 import dev.brauw.mapper.region.PolygonRegion;
-import dev.brauw.mapper.region.PerspectiveRegion;
 import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.region.RegionOptions;
 import dev.brauw.mapper.session.EditSession;
 import dev.brauw.mapper.tag.TagRegistry;
+import dev.brauw.mapper.util.RegionFormat;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -18,7 +19,6 @@ import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.util.RayTraceResult;
 import org.jetbrains.annotations.Nullable;
 
@@ -29,11 +29,16 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.WeakHashMap;
+import java.util.function.BiFunction;
 
 /**
- * Handles the selection and creation of regions based on player interactions.
- * This class manages the selection corners for cuboid regions and provides
- * methods for creating different types of regions (Cuboid, Point, Perspective).
+ * Turns player interactions into regions.
+ * <p>
+ * In-progress selections (cuboid corners, polygon parts, path waypoints) are per-player, not
+ * per-session: several members edit the same world at once, and one builder's half-placed corners
+ * are not something anybody else should be able to finish or clobber. Only the finished region is
+ * shared, which is why every entry point takes the acting player explicitly rather than reading a
+ * single owner off the session.
  */
 @RequiredArgsConstructor
 public class SelectionHandler {
@@ -46,13 +51,6 @@ public class SelectionHandler {
     private final Map<Player, List<CuboidRegion>> polygonSelections = new WeakHashMap<>();
     private final Map<Player, List<Location>> pathSelections = new WeakHashMap<>();
 
-    /**
-     * Retrieves the SelectionCorners object for a given player.
-     * If the player does not have a SelectionCorners object yet, it creates a new one.
-     *
-     * @param player The player for whom to retrieve the SelectionCorners.
-     * @return The SelectionCorners object for the player.
-     */
     private SelectionCorners getSelection(Player player) {
         return selections.computeIfAbsent(player, key -> new SelectionCorners());
     }
@@ -65,307 +63,287 @@ public class SelectionHandler {
         return pathSelections.computeIfAbsent(player, key -> new ArrayList<>());
     }
 
-    private void clearSelections(Player player) {
+    public void clearSelections(Player player) {
         selections.remove(player);
         polygonSelections.remove(player);
         pathSelections.remove(player);
     }
 
-    public boolean hasCompleteSelection(EditSession session) {
-        return getSelection(session.getOwner()).isComplete();
+    public boolean hasCompleteSelection(Player player) {
+        return getSelection(player).isComplete();
+    }
+
+    public int getPathPointCount(Player player) {
+        return getPathSelection(player).size();
+    }
+
+    public int getPolygonPartCount(Player player) {
+        return getPolygonSelection(player).size();
     }
 
     /**
-     * Sets the first position for a cuboid region selection.
-     * This method is called when a player interacts with the world to define the first corner of a region.
+     * Sets the first corner of a cuboid selection at what the player is looking at.
      *
-     * @param session The EditSession for the player.
-     * @param event   The PlayerInteractEvent containing information about the interaction.
+     * @param actor the acting player
      */
-    public void setFirstPosition(EditSession session, PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        Location location = getTargetBlock(player);
-        if (location == null) return;
+    public void setFirstPosition(Player actor) {
+        final Location location = getTargetBlock(actor);
+        if (location == null) {
+            actor.sendMessage(Component.text("Look at a block to set a position.", NamedTextColor.RED));
+            return;
+        }
 
-        getSelection(player).setFirstCorner(location);
-
-        player.sendMessage(Component.text("First position set ", NamedTextColor.GREEN)
-                .append(formatLocation(location)));
-        player.playSound(player.getLocation(), Sound.BLOCK_STONE_BUTTON_CLICK_ON, 1.0f, 1.0f);
+        getSelection(actor).setFirstCorner(location);
+        actor.sendMessage(Component.text("First position set ", NamedTextColor.GREEN)
+                .append(RegionFormat.location(location)));
+        actor.playSound(actor.getLocation(), Sound.BLOCK_STONE_BUTTON_CLICK_ON, 1.0f, 1.0f);
     }
 
     /**
-     * Sets the second position for a cuboid region selection.
-     * This method is called when a player interacts with the world to define the second corner of a region.
+     * Sets the second corner of a cuboid selection at what the player is looking at.
      *
-     * @param session The EditSession for the player.
-     * @param event   The PlayerInteractEvent containing information about the interaction.
+     * @param actor the acting player
      */
-    public void setSecondPosition(EditSession session, PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        Location location = getTargetBlock(player);
-        if (location == null) return;
+    public void setSecondPosition(Player actor) {
+        final Location location = getTargetBlock(actor);
+        if (location == null) {
+            actor.sendMessage(Component.text("Look at a block to set a position.", NamedTextColor.RED));
+            return;
+        }
 
-        getSelection(player).setSecondCorner(location);
-
-        player.sendMessage(Component.text("Second position set ", NamedTextColor.YELLOW)
-                .append(formatLocation(location)));
-        player.playSound(player.getLocation(), Sound.BLOCK_STONE_BUTTON_CLICK_ON, 1.0f, 1.5f);
+        getSelection(actor).setSecondCorner(location);
+        actor.sendMessage(Component.text("Second position set ", NamedTextColor.YELLOW)
+                .append(RegionFormat.location(location)));
+        actor.playSound(actor.getLocation(), Sound.BLOCK_STONE_BUTTON_CLICK_ON, 1.0f, 1.5f);
     }
 
     /**
-     * Creates a cuboid region based on the selected positions.
-     * This method checks if both positions have been set and then opens the GUI
-     * to create the region with a name and options.
+     * Creates a cuboid region from the player's two corners.
      *
-     * @param session The EditSession for the player.
+     * @param session the session to add the region to
+     * @param actor   the acting player
+     * @param name    the region name, or {@code null} to prompt for one in the create GUI
      */
-    public void createCuboidRegion(EditSession session) {
-        Player player = session.getOwner();
-
-        final SelectionCorners selection = getSelection(player);
+    public void createCuboidRegion(EditSession session, Player actor, @Nullable String name) {
+        final SelectionCorners selection = getSelection(actor);
         if (!selection.isComplete()) {
-            player.sendMessage(Component.text("You need to set both positions first!", NamedTextColor.RED));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            actor.sendMessage(Component.text("You need to set both positions first!", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return;
         }
 
         final Location first = selection.getFirstCorner();
         final Location second = selection.getSecondCorner();
-        player.sendMessage(Component.text("Creating cuboid region...", NamedTextColor.YELLOW));
-        guiManager.openRegionCreateGui(session, (name, options) -> {
-            if (!validate(player, name, options)) {
-                return;
-            }
-
-            CuboidRegion region = new CuboidRegion(name, first, second, options);
-            session.addRegion(region);
-
-            clearSelections(player);
-        }, () -> {
-            clearSelections(player);
-        });
+        create(session, actor, name, (regionName, options) -> new CuboidRegion(regionName, first, second, options));
     }
 
-    public void addPolygonChild(EditSession session) {
-        Player player = session.getOwner();
-        SelectionCorners selection = getSelection(player);
+    public void addPolygonChild(Player actor) {
+        final SelectionCorners selection = getSelection(actor);
         if (!selection.isComplete()) {
-            player.sendMessage(Component.text("You need to set both positions before adding a polygon part.", NamedTextColor.RED));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            actor.sendMessage(Component.text("You need to set both positions before adding a polygon part.", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return;
         }
 
-        Location first = selection.getFirstCorner();
-        Location second = selection.getSecondCorner();
-        List<CuboidRegion> children = getPolygonSelection(player);
+        final Location first = selection.getFirstCorner();
+        final Location second = selection.getSecondCorner();
+        final List<CuboidRegion> children = getPolygonSelection(actor);
         children.add(new CuboidRegion("polygon-child-" + children.size(), first, second));
-        selections.remove(player);
+        selections.remove(actor);
 
-        player.sendMessage(Component.text("Added polygon part ", NamedTextColor.GREEN)
+        actor.sendMessage(Component.text("Added polygon part ", NamedTextColor.GREEN)
                 .append(Component.text("#" + children.size(), NamedTextColor.YELLOW)));
-        player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_STEP, 1.0f, 1.2f);
-    }
-
-    public void createPolygonRegion(EditSession session) {
-        Player player = session.getOwner();
-        List<CuboidRegion> children = polygonSelections.get(player);
-        if (children == null || children.isEmpty()) {
-            player.sendMessage(Component.text("Add at least one cuboid part before creating a polygon region.", NamedTextColor.RED));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-            return;
-        }
-
-        if (getSelection(player).isComplete()) {
-            player.sendMessage(Component.text("Finish the current cuboid part first by sneaking and right-clicking again.", NamedTextColor.RED));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-            return;
-        }
-
-        List<CuboidRegion> snapshot = List.copyOf(children);
-        player.sendMessage(Component.text("Creating polygon region...", NamedTextColor.YELLOW));
-        guiManager.openRegionCreateGui(session, (name, options) -> {
-            if (!validate(player, name, options)) {
-                return;
-            }
-
-            PolygonRegion region = new PolygonRegion(name, snapshot, options);
-            session.addRegion(region);
-            clearSelections(player);
-        }, () -> clearSelections(player));
+        actor.playSound(actor.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_STEP, 1.0f, 1.2f);
     }
 
     /**
-     * Appends a waypoint to the player's in-progress path, capturing the player's facing so the point
+     * Creates a polygon region from the parts the player has added.
+     *
+     * @param session the session to add the region to
+     * @param actor   the acting player
+     * @param name    the region name, or {@code null} to prompt for one in the create GUI
+     */
+    public void createPolygonRegion(EditSession session, Player actor, @Nullable String name) {
+        final List<CuboidRegion> children = polygonSelections.get(actor);
+        if (children == null || children.isEmpty()) {
+            actor.sendMessage(Component.text("Add at least one cuboid part before creating a polygon region.", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        if (getSelection(actor).isComplete()) {
+            actor.sendMessage(Component.text("Finish the current cuboid part first.", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        final List<CuboidRegion> snapshot = List.copyOf(children);
+        create(session, actor, name, (regionName, options) -> new PolygonRegion(regionName, snapshot, options));
+    }
+
+    /**
+     * Appends a waypoint to the player's in-progress path, capturing their facing so the point
      * carries a direction as well as a position.
      *
-     * @param session  The EditSession for the player.
-     * @param location The interaction point, or {@code null} when the player clicked open air.
+     * @param actor    the acting player
+     * @param location the interaction point, or {@code null} when the player clicked open air
      */
-    public void addPathPoint(EditSession session, @Nullable Location location) {
-        final Player player = session.getOwner();
+    public void addPathPoint(Player actor, @Nullable Location location) {
         // Clicking air yields no interaction point; standing position is the sensible fallback and is
         // usually what a builder wants for a waypoint anyway.
-        final Location target = (location == null ? player.getLocation() : location).clone();
-        target.setDirection(player.getLocation().getDirection());
+        final Location target = (location == null ? actor.getLocation() : location).clone();
+        target.setDirection(actor.getLocation().getDirection());
 
-        final List<Location> points = getPathSelection(player);
+        final List<Location> points = getPathSelection(actor);
         points.add(target);
 
-        player.sendMessage(Component.text("Added waypoint ", NamedTextColor.GREEN)
+        actor.sendMessage(Component.text("Added waypoint ", NamedTextColor.GREEN)
                 .append(Component.text("#" + points.size(), NamedTextColor.YELLOW))
                 .append(Component.text(" ", NamedTextColor.GRAY))
-                .append(formatLocation(target)));
-        player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_STEP, 1.0f, 1.2f);
+                .append(RegionFormat.location(target)));
+        actor.playSound(actor.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_STEP, 1.0f, 1.2f);
     }
 
     /**
      * Removes the most recently added waypoint from the player's in-progress path.
      *
-     * @param session The EditSession for the player.
+     * @param actor the acting player
      */
-    public void undoPathPoint(EditSession session) {
-        final Player player = session.getOwner();
-        final List<Location> points = getPathSelection(player);
+    public void undoPathPoint(Player actor) {
+        final List<Location> points = getPathSelection(actor);
         if (points.isEmpty()) {
-            player.sendMessage(Component.text("No waypoints to undo.", NamedTextColor.RED));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            actor.sendMessage(Component.text("No waypoints to undo.", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return;
         }
 
         points.removeLast();
-        player.sendMessage(Component.text("Removed the last waypoint, ", NamedTextColor.YELLOW)
+        actor.sendMessage(Component.text("Removed the last waypoint, ", NamedTextColor.YELLOW)
                 .append(Component.text(points.size() + " remaining", NamedTextColor.GRAY)));
-        player.playSound(player.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.4f);
+        actor.playSound(actor.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.4f);
     }
 
     /**
      * Creates a path region from the waypoints the player has placed, in click order.
      *
-     * @param session The EditSession for the player.
+     * @param session the session to add the region to
+     * @param actor   the acting player
+     * @param name    the region name, or {@code null} to prompt for one in the create GUI
      */
-    public void createPathRegion(EditSession session) {
-        final Player player = session.getOwner();
-        final List<Location> points = pathSelections.get(player);
+    public void createPathRegion(EditSession session, Player actor, @Nullable String name) {
+        final List<Location> points = pathSelections.get(actor);
         if (points == null || points.size() < 2) {
-            player.sendMessage(Component.text("Add at least two waypoints before creating a path region.", NamedTextColor.RED));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            actor.sendMessage(Component.text("Add at least two waypoints before creating a path region.", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
             return;
         }
 
         final List<Location> snapshot = List.copyOf(points);
-        player.sendMessage(Component.text("Creating path region...", NamedTextColor.YELLOW));
-        guiManager.openRegionCreateGui(session, (name, options) -> {
-            if (!validate(player, name, options)) {
-                return;
-            }
-
-            PathRegion region = new PathRegion(name, snapshot, options);
-            session.addRegion(region);
-            clearSelections(player);
-        }, () -> clearSelections(player));
+        create(session, actor, name, (regionName, options) -> new PathRegion(regionName, snapshot, options));
     }
 
     /**
-     * Creates a point region at the specified location.
-     * This method opens the GUI to create the region with a name and options.
+     * Creates a point region at the given location, or at the player's feet when they are sneaking.
      *
-     * @param session  The EditSession for the player.
-     * @param location The location at which to create the point region.
+     * @param session  the session to add the region to
+     * @param actor    the acting player
+     * @param location the location to place the point at, or {@code null} to use the player's feet
+     * @param name     the region name, or {@code null} to prompt for one in the create GUI
      */
-    public void createPointRegion(EditSession session, Location location) {
-        final Player player = session.getOwner();
-        final Location target = player.isSneaking() ? player.getLocation() : location;
-
-        if (target == null) {
-            return;
-        }
-
+    public void createPointRegion(EditSession session, Player actor, @Nullable Location location, @Nullable String name) {
+        final Location target = (actor.isSneaking() || location == null ? actor.getLocation() : location).clone();
         target.setYaw(0);
         target.setPitch(0);
-        guiManager.openRegionCreateGui(session, (name, options) -> {
-            if (!validate(session.getOwner(), name, options)) {
-                return;
-            }
-
-            PointRegion region = new PointRegion(name, target, options);
-            session.addRegion(region);
-        }, () -> {
-            clearSelections(session.getOwner());
-        });
+        create(session, actor, name, (regionName, options) -> new PointRegion(regionName, target, options));
     }
 
     /**
-     * Creates a perspective region at the specified location.
-     * This method opens the GUI to create the region with a name and options.
+     * Creates a perspective region - a point that also records which way the player was facing.
      *
-     * @param session  The EditSession for the player.
-     * @param location The location at which to create the perspective region.
+     * @param session  the session to add the region to
+     * @param actor    the acting player
+     * @param location the location to place the point at, or {@code null} to use the player's feet
+     * @param name     the region name, or {@code null} to prompt for one in the create GUI
      */
-    public void createPerspectiveRegion(EditSession session, Location location) {
-        final Player player = session.getOwner();
-        final Location target = player.isSneaking() ? player.getLocation() : location;
+    public void createPerspectiveRegion(EditSession session, Player actor, @Nullable Location location, @Nullable String name) {
+        final Location target = (actor.isSneaking() || location == null ? actor.getLocation() : location).clone();
+        target.setDirection(actor.getLocation().getDirection());
+        create(session, actor, name, (regionName, options) -> new PerspectiveRegion(regionName, target, options));
+    }
 
-        if (target == null) {
+    /**
+     * Builds a region and adds it to the session, prompting for a name and colour in the create GUI
+     * when the caller did not supply a name.
+     * <p>
+     * The tool path and the command path share this, so a region is announced, validated and has its
+     * selection cleared identically either way.
+     */
+    private void create(EditSession session, Player actor, @Nullable String name,
+                        BiFunction<String, RegionOptions, Region> factory) {
+        if (name != null) {
+            if (!validate(actor, name)) {
+                return;
+            }
+            addAndAnnounce(session, actor, factory.apply(name, RegionOptions.builder().build()));
+            clearSelections(actor);
             return;
         }
 
-        target.setDirection(player.getLocation().getDirection());
-        guiManager.openRegionCreateGui(session, (name, options) -> {
-            if (!validate(player, name, options)) {
+        guiManager.openRegionCreateGui(actor, (chosenName, options) -> {
+            if (!validate(actor, chosenName)) {
                 return;
             }
+            addAndAnnounce(session, actor, factory.apply(chosenName, options));
+            clearSelections(actor);
+        }, () -> clearSelections(actor));
+    }
 
-            PerspectiveRegion region = new PerspectiveRegion(name, target, options);
-            session.addRegion(region);
-        }, () -> {
-            clearSelections(player);
-        });
+    private void addAndAnnounce(EditSession session, Player actor, Region region) {
+        session.addRegion(region);
+        actor.sendMessage(Component.text("Created ", NamedTextColor.GREEN)
+                .append(RegionFormat.describe(region)));
+        session.broadcastExcept(actor, Component.text(actor.getName() + " added ", NamedTextColor.GRAY)
+                .append(RegionFormat.describe(region)));
     }
 
     /**
-     * Handles the deletion of a region based on player interaction.
-     * This method ray traces to find the block the player is looking at and deletes
-     * the region at that location, if one exists.
+     * Deletes the region the player is looking at.
      *
-     * @param session The EditSession for the player.
-     * @param event   The PlayerInteractEvent containing information about the interaction.
+     * @param session the session to delete from
+     * @param actor   the acting player
      */
-    public void handleRegionDeletion(EditSession session, PlayerInteractEvent event) {
-        Player player = session.getOwner();
-        final Location location = getTargetPoint(player);
+    public void handleRegionDeletion(EditSession session, Player actor) {
+        final Location location = getTargetPoint(actor);
         if (location == null) return;
 
         findRegionAt(session, location)
-                .ifPresentOrElse(
-                        region -> deleteRegion(session, region),
-                        () -> notifyNoRegion(player)
-                );
-    }
-
-    public void handleTagEditor(EditSession session, PlayerInteractEvent event) {
-        Player player = session.getOwner();
-        final Location location = getTargetPoint(player);
-        if (location == null) return;
-
-        findRegionAt(session, location)
-                .ifPresentOrElse(
-                        region -> openTagEditor(session, region),
-                        () -> notifyNoRegion(player)
-                );
+                .ifPresentOrElse(region -> deleteRegion(session, actor, region), () -> notifyNoRegion(actor));
     }
 
     /**
-     * Finds the region the player is targeting at the given location, resolving
-     * overlaps in favour of the most specific (smallest) region. This is what
-     * lets a player select a label region nested inside a larger cuboid instead
-     * of always grabbing the enclosing cuboid.
+     * Opens the tag editor for the region the player is looking at.
+     *
+     * @param session the session to search
+     * @param actor   the acting player
+     */
+    public void handleTagEditor(EditSession session, Player actor) {
+        final Location location = getTargetPoint(actor);
+        if (location == null) return;
+
+        findRegionAt(session, location)
+                .ifPresentOrElse(region -> openTagEditor(actor, region), () -> notifyNoRegion(actor));
+    }
+
+    /**
+     * Finds the region the player is targeting at the given location, resolving overlaps in favour of
+     * the most specific (smallest) region. This is what lets a player select a label region nested
+     * inside a larger cuboid instead of always grabbing the enclosing cuboid.
      *
      * @param session  the edit session whose regions to search
      * @param location the targeted location
      * @return the most specific region containing the location, if any
      */
-    private Optional<Region> findRegionAt(EditSession session, Location location) {
+    public Optional<Region> findRegionAt(EditSession session, Location location) {
         return session.getRegions().stream()
                 .filter(region -> region.contains(location)
                         || (region instanceof PointRegion point && point.getLocation().distance(location) < 0.2))
@@ -373,15 +351,15 @@ public class SelectionHandler {
     }
 
     /**
-     * Computes a specificity score for a region: lower means "more specific" and
-     * should win when regions overlap. A point is the most specific thing a
-     * player can target; a large cuboid the least.
+     * Computes a specificity score for a region: lower means "more specific" and should win when
+     * regions overlap. A point is the most specific thing a player can target; a large cuboid the
+     * least.
      *
      * <ul>
      *   <li>{@link PointRegion} / {@link PerspectiveRegion} → 0 (always wins)</li>
      *   <li>{@link CuboidRegion} → its block volume (inclusive bounds)</li>
-     *   <li>{@link PolygonRegion} → the volume of its smallest child, since the
-     *       player is standing inside exactly one child cuboid</li>
+     *   <li>{@link PolygonRegion} → the volume of its smallest child, since the player is standing
+     *       inside exactly one child cuboid</li>
      * </ul>
      *
      * @param region the region to score
@@ -399,48 +377,57 @@ public class SelectionHandler {
     }
 
     /**
-     * Computes the inclusive block volume of a cuboid. Bounds are inclusive
-     * (see {@link CuboidRegion#contains}), so each span gets a +1 and a single
-     * block scores 1 rather than 0.
+     * Computes the inclusive block volume of a cuboid. Bounds are inclusive (see
+     * {@link CuboidRegion#contains}), so each span gets a +1 and a single block scores 1 rather
+     * than 0.
      *
      * @param cuboid the cuboid to measure
      * @return the block volume
      */
     private double cuboidVolume(CuboidRegion cuboid) {
-        Location min = cuboid.getMin();
-        Location max = cuboid.getMax();
-        double width = max.getBlockX() - min.getBlockX() + 1;
-        double height = max.getBlockY() - min.getBlockY() + 1;
-        double depth = max.getBlockZ() - min.getBlockZ() + 1;
+        final Location min = cuboid.getMin();
+        final Location max = cuboid.getMax();
+        final double width = max.getBlockX() - min.getBlockX() + 1;
+        final double height = max.getBlockY() - min.getBlockY() + 1;
+        final double depth = max.getBlockZ() - min.getBlockZ() + 1;
         return width * height * depth;
     }
 
     /**
-     * Deletes a region that has already been resolved (e.g. from an entity click),
-     * skipping the raytrace + "no region found" path.
+     * Deletes a region that has already been resolved (e.g. from an entity click or a command),
+     * skipping the raytrace and the "no region found" path.
      *
      * @param session the owning edit session
+     * @param actor   the acting player
      * @param region  the region to delete
      */
-    public void deleteRegion(EditSession session, Region region) {
-        Player player = session.getOwner();
-        session.removeRegion(region);
-        player.sendMessage(Component.text("Region deleted: ", NamedTextColor.RED)
-                .append(Component.text(region.getName(), NamedTextColor.DARK_RED)));
-        player.playSound(player.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.0f);
+    public void deleteRegion(EditSession session, Player actor, Region region) {
+        // A region resolved a moment ago (a pending pick, an open browser) may already be gone -
+        // somebody else shares this session. Reporting a delete that did not happen is worse than
+        // saying so.
+        if (!session.removeRegion(region)) {
+            actor.sendMessage(Component.text("That region is already gone.", NamedTextColor.RED));
+            actor.playSound(actor.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        actor.sendMessage(Component.text("Deleted ", NamedTextColor.RED)
+                .append(RegionFormat.describe(region)));
+        actor.playSound(actor.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.0f);
+        session.broadcastExcept(actor, Component.text(actor.getName() + " deleted ", NamedTextColor.GRAY)
+                .append(RegionFormat.describe(region)));
     }
 
     /**
-     * Opens the tag editor for a region that has already been resolved (e.g. from
-     * an entity click), skipping the raytrace + "no region found" path.
+     * Opens the tag editor for a region that has already been resolved.
      *
-     * @param session the owning edit session
-     * @param region  the region whose tags to edit
+     * @param actor  the acting player
+     * @param region the region whose tags to edit
      */
-    public void openTagEditor(EditSession session, Region region) {
+    public void openTagEditor(Player actor, Region region) {
         // Opened unconditionally: even with no tag registered for this region name the editor is useful,
         // since it can write a free-form tag and can remove values already applied.
-        guiManager.openTagEditor(session.getOwner(), region, tagRegistry);
+        guiManager.openTagEditor(actor, region, tagRegistry);
     }
 
     private void notifyNoRegion(Player player) {
@@ -449,49 +436,33 @@ public class SelectionHandler {
     }
 
     private static @Nullable Location getTargetBlock(Player player) {
-        RayTraceResult result = player.getWorld().rayTraceBlocks(
-                player.getEyeLocation(),
-                player.getLocation().getDirection(),
-                (Objects.requireNonNull(player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)).getValue() + MIN_DISTANCE_TO_INTERACT),
-                FluidCollisionMode.NEVER,
-                true
-        );
-
+        final RayTraceResult result = rayTrace(player);
         if (result == null || result.getHitBlock() == null) {
             return null;
         }
 
-        return player.isSneaking() ? result.getHitBlock().getLocation().toCenterLocation() : result.getHitPosition().toLocation(result.getHitBlock().getWorld());
+        return player.isSneaking()
+                ? result.getHitBlock().getLocation().toCenterLocation()
+                : result.getHitPosition().toLocation(result.getHitBlock().getWorld());
     }
 
     private static @Nullable Location getTargetPoint(Player player) {
-        RayTraceResult result = player.getWorld().rayTraceBlocks(
+        final RayTraceResult result = rayTrace(player);
+        return result == null ? null : result.getHitPosition().toLocation(player.getWorld());
+    }
+
+    private static @Nullable RayTraceResult rayTrace(Player player) {
+        return player.getWorld().rayTraceBlocks(
                 player.getEyeLocation(),
                 player.getLocation().getDirection(),
-                (Objects.requireNonNull(player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)).getValue() + MIN_DISTANCE_TO_INTERACT),
+                Objects.requireNonNull(player.getAttribute(Attribute.BLOCK_INTERACTION_RANGE)).getValue()
+                        + MIN_DISTANCE_TO_INTERACT,
                 FluidCollisionMode.NEVER,
                 true
         );
-
-        if (result == null) {
-            return null;
-        }
-
-        return result.getHitPosition().toLocation(player.getWorld());
     }
 
-    /**
-     * Formats a Location object into a Component for displaying coordinates.
-     *
-     * @param loc The Location to format.
-     * @return A Component containing the formatted location coordinates.
-     */
-    private Component formatLocation(Location loc) {
-        return Component.text(String.format("(%.1f, %.1f, %.1f)",
-                loc.getX(), loc.getY(), loc.getZ()), NamedTextColor.GRAY);
-    }
-
-    private boolean validate(Player player, String name, RegionOptions regionOptions) {
+    private boolean validate(Player player, String name) {
         if (name == null || name.isEmpty()) {
             player.sendMessage(Component.text("Please enter a name for the region.", NamedTextColor.RED));
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 1.0f);

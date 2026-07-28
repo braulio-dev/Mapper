@@ -1,10 +1,11 @@
 package dev.brauw.mapper.session.display;
 
-import com.google.common.collect.ArrayListMultimap;
+import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import dev.brauw.mapper.region.CuboidRegion;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.TextColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -18,9 +19,10 @@ import org.jetbrains.annotations.NotNull;
 import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -30,7 +32,9 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
 
     private final Map<CuboidRegion, BlockDisplay> displays = new HashMap<>();
     private final Map<CuboidRegion, TextDisplay> labels = new HashMap<>();
-    private final Multimap<CuboidRegion, UUID> viewers = ArrayListMultimap.create();
+    // A set, not a list: showing a region to someone already viewing it (a member refreshing on
+    // reconnect) must not leave a second entry that keeps the entity alive after they hide it.
+    private final Multimap<CuboidRegion, UUID> viewers = HashMultimap.create();
     private final Plugin plugin;
 
     public BlockStrategy(Plugin plugin) {
@@ -112,56 +116,65 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
     }
 
     @Override
-    public void update(@NotNull CuboidRegion region, @NotNull Player player) {
-        final BlockDisplay removed = displays.remove(region);
-        if (removed != null && removed.isValid()) {
-            removed.remove();
+    public void update(@NotNull CuboidRegion region) {
+        despawn(region);
+        final BlockDisplay display = getDisplay(region);
+        final TextDisplay label = getLabel(region);
+        for (Player viewer : viewersOf(region)) {
+            viewer.showEntity(plugin, display);
+            viewer.showEntity(plugin, label);
         }
-        final TextDisplay removedLabel = labels.remove(region);
-        if (removedLabel != null && removedLabel.isValid()) {
-            removedLabel.remove();
-        }
-
-        display(region, player);
     }
 
     @Override
-    public void revalidate(@NotNull CuboidRegion region, @NotNull Player player) {
+    public void revalidate(@NotNull CuboidRegion region) {
         final BlockDisplay entity = displays.get(region);
         final TextDisplay label = labels.get(region);
-        boolean needsRefresh = (entity != null && !entity.isValid()) || (label != null && !label.isValid());
-        if (needsRefresh) {
-            if (entity != null && !entity.isValid()) displays.remove(region);
-            if (label != null && !label.isValid()) labels.remove(region);
-            player.showEntity(plugin, getDisplay(region));
-            player.showEntity(plugin, getLabel(region));
+        if ((entity != null && !entity.isValid()) || (label != null && !label.isValid())) {
+            update(region);
         }
     }
 
     @Override
     public void hide(@NotNull CuboidRegion region, @NotNull Player player) {
-        final UUID playerUUID = player.getUniqueId();
-        if (viewers.remove(region, playerUUID)) {
-            // Hide entity if we could remove them as viewers
-            final BlockDisplay entity = Objects.requireNonNull(displays.get(region));
+        if (!viewers.remove(region, player.getUniqueId())) {
+            return;
+        }
+
+        final BlockDisplay entity = displays.get(region);
+        if (entity != null) {
             player.hideEntity(plugin, entity);
+        }
+        final TextDisplay label = labels.get(region);
+        if (label != null) {
+            player.hideEntity(plugin, label);
+        }
 
-            final TextDisplay label = labels.get(region);
-            if (label != null) {
-                player.hideEntity(plugin, label);
-            }
+        if (viewers.get(region).isEmpty()) {
+            despawn(region);
+        }
+    }
 
-            // If there are no more viewers, remove the displays
-            if (viewers.get(region).isEmpty()) {
-                final BlockDisplay blockDisplay = displays.remove(region);
-                if (blockDisplay != null && blockDisplay.isValid()) {
-                    blockDisplay.remove();
-                }
-                final TextDisplay removedLabel = labels.remove(region);
-                if (removedLabel != null && removedLabel.isValid()) {
-                    removedLabel.remove();
-                }
+    /** @return the online players currently viewing this region */
+    private List<Player> viewersOf(CuboidRegion region) {
+        final List<Player> online = new ArrayList<>();
+        for (UUID viewerId : viewers.get(region)) {
+            final Player viewer = Bukkit.getPlayer(viewerId);
+            if (viewer != null) {
+                online.add(viewer);
             }
+        }
+        return online;
+    }
+
+    private void despawn(CuboidRegion region) {
+        final BlockDisplay display = displays.remove(region);
+        if (display != null && display.isValid()) {
+            display.remove();
+        }
+        final TextDisplay label = labels.remove(region);
+        if (label != null && label.isValid()) {
+            label.remove();
         }
     }
 }

@@ -1,28 +1,27 @@
 package dev.brauw.mapper.session.event;
 
 import dev.brauw.mapper.session.EditSession;
+import dev.brauw.mapper.session.SessionRole;
 import lombok.Getter;
-import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.HandlerList;
 import org.jetbrains.annotations.NotNull;
 
-/**
- * Fired when a world's {@link EditSession} closes, after every member has been detached from it.
- */
+/** Fired when a player joins a world's edit session, including the member who opened it. */
 @Getter
-public class SessionEndEvent extends Event {
+public class SessionJoinEvent extends Event {
 
     private static final HandlerList handlers = new HandlerList();
 
     private final EditSession session;
+    private final Player player;
+    private final SessionRole role;
 
-    public SessionEndEvent(EditSession session) {
+    public SessionJoinEvent(EditSession session, Player player, SessionRole role) {
         this.session = session;
-    }
-
-    public World getWorld() {
-        return session.getWorld();
+        this.player = player;
+        this.role = role;
     }
 
     @NotNull

@@ -4,11 +4,13 @@ import dev.brauw.mapper.Mapper;
 import dev.brauw.mapper.gui.common.GuiSet;
 import dev.brauw.mapper.gui.common.GuiSetName;
 import dev.brauw.mapper.gui.metadata.GuiMetadata;
+import dev.brauw.mapper.gui.region.GuiRegionBrowser;
 import dev.brauw.mapper.gui.selector.GuiColorSelect;
 import dev.brauw.mapper.gui.tag.GuiTagEditor;
 import dev.brauw.mapper.metadata.MapMetadata;
 import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.region.RegionOptions;
+import dev.brauw.mapper.selection.SelectionHandler;
 import dev.brauw.mapper.session.EditSession;
 import dev.brauw.mapper.tag.Tag;
 import dev.brauw.mapper.tag.TagRegistry;
@@ -19,6 +21,7 @@ import xyz.xenondevs.invui.item.builder.ItemBuilder;
 import xyz.xenondevs.invui.window.AnvilWindow;
 import xyz.xenondevs.invui.window.Window;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -32,7 +35,7 @@ public class GuiManager {
         Structure.addGlobalIngredient('#', new ItemBuilder(Material.BLACK_STAINED_GLASS_PANE).setDisplayName(""));
     }
 
-    public void openRegionCreateGui(EditSession session, BiConsumer<String, RegionOptions> regionCreator, Runnable onClose) {
+    public void openRegionCreateGui(Player player, BiConsumer<String, RegionOptions> regionCreator, Runnable onClose) {
         AtomicReference<String> name = new AtomicReference<>("");
         final RegionOptions.RegionOptionsBuilder builder = RegionOptions.builder();
 
@@ -47,7 +50,24 @@ public class GuiManager {
                 })
                 .setTitle("Create a new region")
                 .addCloseHandler(onClose)
-                .open(session.getOwner().getPlayer());
+                .open(player);
+    }
+
+    /**
+     * Opens the paged region list.
+     *
+     * @param session          the session whose regions are being browsed
+     * @param player           the browsing player
+     * @param selectionHandler used to delete and tag regions picked out of the list
+     * @param shown            the regions to list, already filtered by the caller
+     * @param title            the window title, which is where the filter is described
+     */
+    public void openRegionBrowser(EditSession session, Player player, SelectionHandler selectionHandler,
+                                  List<Region> shown, String title) {
+        Window.single()
+                .setTitle(title)
+                .setGui(new GuiRegionBrowser(session, player, this, selectionHandler, shown))
+                .open(player);
     }
 
     public void openTagEditor(Player player, Region region, TagRegistry tagRegistry) {
@@ -105,7 +125,7 @@ public class GuiManager {
     public void openCustomTagInput(Player player, Region region, TagRegistry tagRegistry, Consumer<String> onConfirm) {
         AtomicReference<String> value = new AtomicReference<>("");
         GuiSet<String> input = new GuiSet<>(value, () -> Material.NAME_TAG,
-                () -> onConfirm.accept(value.get()), GuiManager::isWellFormedTag);
+                () -> onConfirm.accept(value.get()), TagRegistry::isWellFormedValue);
         AnvilWindow.single()
                 .setGui(input)
                 .addRenameHandler(updated -> {
@@ -116,14 +136,6 @@ public class GuiManager {
                 .addCloseHandler(() -> mapper.getTaskScheduler().scheduleTask(
                         () -> openTagEditor(player, region, tagRegistry), 1L))
                 .open(player);
-    }
-
-    /**
-     * @return true if {@code value} is a bare marker or a {@code key:value} pair, the two shapes
-     * consumers parse. The value half stays permissive because display names live there.
-     */
-    private static boolean isWellFormedTag(String value) {
-        return value != null && value.matches("[A-Za-z0-9_-]+(:.+)?");
     }
 
     public void openMetadataEditor(Player player, MapMetadata mapMetadata) {

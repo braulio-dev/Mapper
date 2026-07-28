@@ -7,6 +7,9 @@ import dev.brauw.mapper.session.EditSession;
 import dev.brauw.mapper.tool.RegionToolManager;
 import dev.brauw.mapper.tool.ToolRegistry.ToolType;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Sound;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -30,92 +33,108 @@ public class RegionToolListener implements Listener {
 
     @EventHandler
     public void onPlayerInteract(PlayerInteractEvent event) {
-        Player player = event.getPlayer();
-        ItemStack item = event.getItem();
-
+        final Player player = event.getPlayer();
+        final ItemStack item = event.getItem();
         if (item == null) return;
 
-        // Check if player has active session
-        if (!mapper.getSessionManager().hasSession(player)) return;
-        EditSession session = mapper.getSessionManager().getSession(player);
+        final EditSession session = editableSession(player);
+        if (session == null) return;
 
-        // Process tool interactions
         if (toolManager.isTool(item, ToolType.CUBOID_WAND)) {
             event.setCancelled(true);
-            handleCuboidWand(event, session);
+            handleCuboidWand(event, session, player);
         }
-        else if (toolManager.isTool(item, ToolType.POINT_REGION_CREATOR) &&
-                event.getAction().isRightClick()) {
+        else if (toolManager.isTool(item, ToolType.POINT_REGION_CREATOR) && event.getAction().isRightClick()) {
             event.setCancelled(true);
-            selectionHandler.createPointRegion(session, event.getInteractionPoint());
+            selectionHandler.createPointRegion(session, player, event.getInteractionPoint(), null);
         }
-        else if (toolManager.isTool(item, ToolType.PERSPECTIVE_REGION_CREATOR) &&
-                event.getAction().isRightClick()) {
+        else if (toolManager.isTool(item, ToolType.PERSPECTIVE_REGION_CREATOR) && event.getAction().isRightClick()) {
             event.setCancelled(true);
-            selectionHandler.createPerspectiveRegion(session, event.getInteractionPoint());
+            selectionHandler.createPerspectiveRegion(session, player, event.getInteractionPoint(), null);
         }
-        else if (toolManager.isTool(item, ToolType.REGION_DELETION_TOOL) &&
-                event.getAction().isRightClick()) {
+        else if (toolManager.isTool(item, ToolType.REGION_DELETION_TOOL) && event.getAction().isRightClick()) {
             event.setCancelled(true);
-            selectionHandler.handleRegionDeletion(session, event);
+            selectionHandler.handleRegionDeletion(session, player);
         }
         else if (toolManager.isTool(item, ToolType.POLYGON_WAND)) {
             event.setCancelled(true);
-            handlePolygonWand(event, session);
+            handlePolygonWand(event, session, player);
         }
-        else if (toolManager.isTool(item, ToolType.TAG_TOOL) &&
-                event.getAction().isRightClick()) {
+        else if (toolManager.isTool(item, ToolType.TAG_TOOL) && event.getAction().isRightClick()) {
             event.setCancelled(true);
-            selectionHandler.handleTagEditor(session, event);
+            selectionHandler.handleTagEditor(session, player);
         }
         else if (toolManager.isTool(item, ToolType.PATH_WAND)) {
             event.setCancelled(true);
-            handlePathWand(event, session);
+            handlePathWand(event, session, player);
         }
     }
 
     /**
-     * Handles right-clicking an entity-backed region display (e.g. the armor stand
-     * of a PerspectiveRegion). We listen to {@link PlayerInteractAtEntityEvent}
-     * because armor stands fire that variant rather than the base interact-entity
-     * event. The clicked entity is traced back to its region via the UUID stamped
-     * on its persistent data container, then the held tool decides the action.
+     * Handles right-clicking an entity-backed region display (e.g. the armor stand of a
+     * PerspectiveRegion). We listen to {@link PlayerInteractAtEntityEvent} because armor stands fire
+     * that variant rather than the base interact-entity event. The clicked entity is traced back to
+     * its region via the UUID stamped on its persistent data container, then the held tool decides
+     * the action.
      */
     @EventHandler
     public void onPlayerInteractEntity(PlayerInteractAtEntityEvent event) {
         // Only react to the main hand so the handler doesn't fire twice (main + off hand).
         if (event.getHand() != EquipmentSlot.HAND) return;
 
-        Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
+        final Player player = event.getPlayer();
+        final ItemStack item = player.getInventory().getItemInMainHand();
         if (item.isEmpty()) return;
 
-        if (!mapper.getSessionManager().hasSession(player)) return;
-        EditSession session = mapper.getSessionManager().getSession(player);
+        final EditSession session = editableSession(player);
+        if (session == null) return;
 
-        Region region = resolveRegion(session, event.getRightClicked());
+        final Region region = resolveRegion(session, event.getRightClicked());
         if (region == null) return;
 
         // The same tools that act on a raytraced region also act on its display entity.
         if (toolManager.isTool(item, ToolType.REGION_DELETION_TOOL)) {
             event.setCancelled(true);
-            selectionHandler.deleteRegion(session, region);
+            selectionHandler.deleteRegion(session, player, region);
         } else if (toolManager.isTool(item, ToolType.TAG_TOOL)) {
             event.setCancelled(true);
-            selectionHandler.openTagEditor(session, region);
+            selectionHandler.openTagEditor(player, region);
         }
     }
 
     /**
-     * Resolves the region that a clicked display entity represents, by reading the
-     * region UUID stamped on the entity and matching it against the session.
+     * Resolves the session a player is allowed to change with a tool.
+     * <p>
+     * A viewer can be holding tools - they may have been demoted mid-session, or picked one up - so
+     * the role is checked at use time rather than inferred from the fact that they hold the item.
+     *
+     * @param player the acting player
+     * @return their session, or {@code null} if they have none here or may not edit it
+     */
+    private @Nullable EditSession editableSession(Player player) {
+        final EditSession session = mapper.getSessionManager().getSession(player);
+        if (session == null || !session.getWorld().equals(player.getWorld())) {
+            return null;
+        }
+
+        if (!session.canEdit(player)) {
+            player.sendActionBar(Component.text("You are viewing this session, not editing it.", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return null;
+        }
+        return session;
+    }
+
+    /**
+     * Resolves the region that a clicked display entity represents, by reading the region UUID
+     * stamped on the entity and matching it against the session.
      *
      * @param session the player's edit session
      * @param entity  the clicked entity
      * @return the matching region, or {@code null} if the entity isn't a region display
      */
     private @Nullable Region resolveRegion(EditSession session, Entity entity) {
-        String rawId = entity.getPersistentDataContainer()
+        final String rawId = entity.getPersistentDataContainer()
                 .get(mapper.getRegionIdKey(), PersistentDataType.STRING);
         if (rawId == null) return null;
 
@@ -126,46 +145,46 @@ public class RegionToolListener implements Listener {
                 .orElse(null);
     }
 
-    private void handleCuboidWand(PlayerInteractEvent event, EditSession session) {
+    private void handleCuboidWand(PlayerInteractEvent event, EditSession session, Player player) {
         if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
-            selectionHandler.setFirstPosition(session, event);
+            selectionHandler.setFirstPosition(player);
         } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            selectionHandler.setSecondPosition(session, event);
-        } else if (event.getAction() == Action.RIGHT_CLICK_AIR && event.getPlayer().isSneaking()) {
-            selectionHandler.createCuboidRegion(session);
+            selectionHandler.setSecondPosition(player);
+        } else if (event.getAction() == Action.RIGHT_CLICK_AIR && player.isSneaking()) {
+            selectionHandler.createCuboidRegion(session, player, null);
         }
     }
 
     /**
-     * Right-click appends a waypoint, left-click undoes the last one, and sneak + right-click finishes
-     * the path. Sneaking is reserved for finishing, so unlike the point tools it does not also mean
-     * "use my standing position" - {@code addPathPoint} falls back to that on its own when a click
-     * yields no interaction point.
+     * Right-click appends a waypoint, left-click undoes the last one, and sneak + right-click
+     * finishes the path. Sneaking is reserved for finishing, so unlike the point tools it does not
+     * also mean "use my standing position" - {@code addPathPoint} falls back to that on its own when
+     * a click yields no interaction point.
      */
-    private void handlePathWand(PlayerInteractEvent event, EditSession session) {
-        if (event.getAction().isRightClick() && event.getPlayer().isSneaking()) {
-            selectionHandler.createPathRegion(session);
+    private void handlePathWand(PlayerInteractEvent event, EditSession session, Player player) {
+        if (event.getAction().isRightClick() && player.isSneaking()) {
+            selectionHandler.createPathRegion(session, player, null);
         } else if (event.getAction().isRightClick()) {
-            selectionHandler.addPathPoint(session, event.getInteractionPoint());
+            selectionHandler.addPathPoint(player, event.getInteractionPoint());
         } else if (event.getAction().isLeftClick()) {
-            selectionHandler.undoPathPoint(session);
+            selectionHandler.undoPathPoint(player);
         }
     }
 
-    private void handlePolygonWand(PlayerInteractEvent event, EditSession session) {
-        if (event.getAction().isRightClick() && event.getPlayer().isSneaking()) {
-            if (selectionHandler.hasCompleteSelection(session)) {
-                selectionHandler.addPolygonChild(session);
+    private void handlePolygonWand(PlayerInteractEvent event, EditSession session, Player player) {
+        if (event.getAction().isRightClick() && player.isSneaking()) {
+            if (selectionHandler.hasCompleteSelection(player)) {
+                selectionHandler.addPolygonChild(player);
             } else {
-                selectionHandler.createPolygonRegion(session);
+                selectionHandler.createPolygonRegion(session, player, null);
             }
             return;
         }
 
         if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
-            selectionHandler.setFirstPosition(session, event);
+            selectionHandler.setFirstPosition(player);
         } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
-            selectionHandler.setSecondPosition(session, event);
+            selectionHandler.setSecondPosition(player);
         }
     }
 }

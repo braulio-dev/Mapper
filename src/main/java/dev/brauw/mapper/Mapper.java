@@ -1,6 +1,10 @@
 package dev.brauw.mapper;
 
+import dev.brauw.mapper.command.CommandSupport;
 import dev.brauw.mapper.command.MapperCommand;
+import dev.brauw.mapper.command.MapperSuggestions;
+import dev.brauw.mapper.command.RegionEditCommand;
+import dev.brauw.mapper.command.RegionPrompt;
 import dev.brauw.mapper.export.ExportManager;
 import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.listener.ListenerManager;
@@ -12,6 +16,7 @@ import dev.brauw.mapper.storage.StorageManager;
 import dev.brauw.mapper.tag.TagRegistry;
 import dev.brauw.mapper.tool.RegionToolManager;
 import dev.brauw.mapper.util.BukkitTaskScheduler;
+import dev.brauw.mapper.validation.ValidationRegistry;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import lombok.CustomLog;
 import lombok.Getter;
@@ -52,6 +57,8 @@ public final class Mapper {
     private final PaperCommandManager<CommandSourceStack> commandManager;
     private final StorageManager storageManager;
     private final MetadataManager metadataManager;
+    private final ValidationRegistry validationRegistry;
+    private final RegionPrompt regionPrompt;
 
     private Mapper(JavaPlugin plugin, MapperSettings settings) {
         this.plugin = plugin;
@@ -78,6 +85,8 @@ public final class Mapper {
                 storage.exportDirectory());
         this.metadataManager =
                 new MetadataManager(settings.defaultMapName(), settings.availableGamemodes(), storageManager);
+        this.validationRegistry = new ValidationRegistry(tagRegistry);
+        this.regionPrompt = new RegionPrompt();
 
         setupCommands();
     }
@@ -85,7 +94,18 @@ public final class Mapper {
     private void setupCommands() {
         final AnnotationParser<CommandSourceStack> parser =
                 new AnnotationParser<>(this.commandManager, CommandSourceStack.class);
-        parser.parse(new MapperCommand(this));
+        final CommandSupport support = new CommandSupport(this);
+
+        // Suggestions first: a command that names a suggestion provider is built at parse time, so
+        // the provider has to already be registered when that command class is parsed.
+        parser.parse(new MapperSuggestions(this));
+        parser.parse(new MapperCommand(this, support, regionPrompt));
+        parser.parse(new RegionEditCommand(this, support, regionPrompt));
+    }
+
+    /** Stops background work. Called when the host plugin disables. */
+    public void shutdown() {
+        sessionManager.shutdown();
     }
 
     /** Initializes the runtime with default settings (no config.yml needed). */

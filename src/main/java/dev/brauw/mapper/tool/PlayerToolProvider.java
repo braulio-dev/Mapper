@@ -20,8 +20,14 @@ public class PlayerToolProvider {
     }
 
     public void giveTools(Player player) {
+        // A second hand-out while the player already holds the tools would cache the tools themselves
+        // as the "previous" inventory, and removeTools would then hand them back forever.
+        if (cacheManager.hasCache(player.getUniqueId())) {
+            return;
+        }
+
         Map<Integer, ItemStack> cache = new HashMap<>();
-        
+
         for (ToolRegistry.ToolType type : ToolRegistry.ToolType.values()) {
             int slot = type.getSlot();
             ItemStack old = player.getInventory().getItem(slot);
@@ -35,8 +41,15 @@ public class PlayerToolProvider {
     }
 
     public void removeTools(Player player) {
+        // No cache means this player was never given tools - a viewer, or someone who left twice.
+        // Without this the restore below would write null into seven of their hotbar slots and
+        // destroy whatever they were actually carrying.
+        if (!cacheManager.hasCache(player.getUniqueId())) {
+            return;
+        }
+
         Map<Integer, ItemStack> cache = cacheManager.getAndRemoveCache(player.getUniqueId());
-        
+
         for (ToolRegistry.ToolType type : ToolRegistry.ToolType.values()) {
             int slot = type.getSlot();
             ItemStack replacement = cache.get(slot);
