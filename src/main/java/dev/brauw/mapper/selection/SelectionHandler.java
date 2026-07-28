@@ -455,6 +455,9 @@ public class SelectionHandler {
      * The copy takes a fresh id, so the two are separate datapoints rather than one written twice,
      * and is re-homed onto the session's world: a region copied in one world and pasted in another
      * would otherwise carry its old world and make the whole set unsaveable.
+     * <p>
+     * It is also turned to the direction the player is facing rather than the one it was copied
+     * with, so a route or an arrangement can be dropped in facing a different way and keep its shape.
      *
      * @param session the session to paste into
      * @param actor   the acting player
@@ -468,9 +471,11 @@ public class SelectionHandler {
             return;
         }
 
-        final Vector delta = actor.getLocation().toVector()
-                .subtract(RegionTransform.anchor(source).toVector());
-        final Region pasted = RegionTransform.duplicate(source, delta, name == null ? source.getName() : name);
+        final Location anchor = RegionTransform.anchor(source);
+        final Vector delta = actor.getLocation().toVector().subtract(anchor.toVector());
+        final float turn = actor.getLocation().getYaw() - anchor.getYaw();
+        final Region pasted = RegionTransform.duplicate(source, delta, turn,
+                name == null ? source.getName() : name);
         pasted.setWorld(session.getWorld());
 
         session.addRegion(pasted);

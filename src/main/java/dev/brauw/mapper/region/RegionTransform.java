@@ -77,7 +77,27 @@ public final class RegionTransform {
      * @return the new region
      */
     public static Region duplicate(Region region, Vector delta, String name) {
-        return rebuild(region, UUID.randomUUID(), name, location -> location.clone().add(delta));
+        return duplicate(region, delta, 0, name);
+    }
+
+    /**
+     * Duplicates a region turned to face a new direction, then moved into place.
+     * <p>
+     * The turn happens about the region's own {@link #anchor}, so its shape is carried over intact
+     * and only its bearing changes - a path copied running north can be dropped running east and
+     * still be the same route. Waypoint facings turn with it, so anything walking the copy still
+     * looks along it.
+     *
+     * @param region the region to duplicate
+     * @param delta  how far from the original to place the copy, measured from its anchor
+     * @param yaw    how far to turn it, in degrees clockwise
+     * @param name   the name for the copy
+     * @return the new region
+     */
+    public static Region duplicate(Region region, Vector delta, float yaw, String name) {
+        final Location pivot = anchor(region);
+        return rebuild(region, UUID.randomUUID(), name,
+                location -> rotateAround(location, pivot, yaw).add(delta));
     }
 
     /**
@@ -167,6 +187,25 @@ public final class RegionTransform {
             }
         }
         return mirrored;
+    }
+
+    /**
+     * Turns a location about a vertical axis through {@code pivot}, facing included.
+     * <p>
+     * Minecraft's yaw runs clockwise from south while {@link Vector#rotateAroundY} turns
+     * anticlockwise, so the angle is negated to make the offset follow the same turn the yaw does.
+     */
+    private static Location rotateAround(Location location, Location pivot, float yaw) {
+        if (yaw == 0) {
+            return location.clone();
+        }
+        final Vector offset = location.toVector().subtract(pivot.toVector())
+                .rotateAroundY(-Math.toRadians(yaw));
+
+        final Location rotated = pivot.clone().add(offset);
+        rotated.setYaw(location.getYaw() + yaw);
+        rotated.setPitch(location.getPitch());
+        return rotated;
     }
 
     private static Location centre(Location min, Location max) {
