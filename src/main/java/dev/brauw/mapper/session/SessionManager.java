@@ -69,6 +69,8 @@ public class SessionManager {
                 new ArmorStandStrategy(mapper.getPlugin(), mapper.getRegionIdKey());
         final BlockStrategy blockStrategy = new BlockStrategy(mapper.getPlugin());
         final PolygonStrategy polygonStrategy = new PolygonStrategy(mapper.getPlugin(), blockStrategy);
+        final PathStrategy pathStrategy = new PathStrategy(mapper.getPlugin());
+        this.displayStrategies.put(Region.RegionType.PATH, pathStrategy);
         this.displayStrategies.put(Region.RegionType.POLYGON, polygonStrategy);
         this.displayStrategies.put(Region.RegionType.CUBOID, blockStrategy);
         this.displayStrategies.put(Region.RegionType.POINT, pointStrategy);

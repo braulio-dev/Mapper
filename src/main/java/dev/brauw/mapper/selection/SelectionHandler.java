@@ -2,6 +2,7 @@ package dev.brauw.mapper.selection;
 
 import dev.brauw.mapper.gui.GuiManager;
 import dev.brauw.mapper.region.CuboidRegion;
+import dev.brauw.mapper.region.PathRegion;
 import dev.brauw.mapper.region.PointRegion;
 import dev.brauw.mapper.region.PolygonRegion;
 import dev.brauw.mapper.region.PerspectiveRegion;
@@ -43,6 +44,7 @@ public class SelectionHandler {
     private final TagRegistry tagRegistry;
     private final Map<Player, SelectionCorners> selections = new WeakHashMap<>();
     private final Map<Player, List<CuboidRegion>> polygonSelections = new WeakHashMap<>();
+    private final Map<Player, List<Location>> pathSelections = new WeakHashMap<>();
 
     /**
      * Retrieves the SelectionCorners object for a given player.
@@ -59,9 +61,14 @@ public class SelectionHandler {
         return polygonSelections.computeIfAbsent(player, key -> new ArrayList<>());
     }
 
+    private List<Location> getPathSelection(Player player) {
+        return pathSelections.computeIfAbsent(player, key -> new ArrayList<>());
+    }
+
     private void clearSelections(Player player) {
         selections.remove(player);
         polygonSelections.remove(player);
+        pathSelections.remove(player);
     }
 
     public boolean hasCompleteSelection(EditSession session) {
@@ -183,6 +190,77 @@ public class SelectionHandler {
             }
 
             PolygonRegion region = new PolygonRegion(name, snapshot, options);
+            session.addRegion(region);
+            clearSelections(player);
+        }, () -> clearSelections(player));
+    }
+
+    /**
+     * Appends a waypoint to the player's in-progress path, capturing the player's facing so the point
+     * carries a direction as well as a position.
+     *
+     * @param session  The EditSession for the player.
+     * @param location The interaction point, or {@code null} when the player clicked open air.
+     */
+    public void addPathPoint(EditSession session, @Nullable Location location) {
+        final Player player = session.getOwner();
+        // Clicking air yields no interaction point; standing position is the sensible fallback and is
+        // usually what a builder wants for a waypoint anyway.
+        final Location target = (location == null ? player.getLocation() : location).clone();
+        target.setDirection(player.getLocation().getDirection());
+
+        final List<Location> points = getPathSelection(player);
+        points.add(target);
+
+        player.sendMessage(Component.text("Added waypoint ", NamedTextColor.GREEN)
+                .append(Component.text("#" + points.size(), NamedTextColor.YELLOW))
+                .append(Component.text(" ", NamedTextColor.GRAY))
+                .append(formatLocation(target)));
+        player.playSound(player.getLocation(), Sound.BLOCK_AMETHYST_BLOCK_STEP, 1.0f, 1.2f);
+    }
+
+    /**
+     * Removes the most recently added waypoint from the player's in-progress path.
+     *
+     * @param session The EditSession for the player.
+     */
+    public void undoPathPoint(EditSession session) {
+        final Player player = session.getOwner();
+        final List<Location> points = getPathSelection(player);
+        if (points.isEmpty()) {
+            player.sendMessage(Component.text("No waypoints to undo.", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        points.removeLast();
+        player.sendMessage(Component.text("Removed the last waypoint, ", NamedTextColor.YELLOW)
+                .append(Component.text(points.size() + " remaining", NamedTextColor.GRAY)));
+        player.playSound(player.getLocation(), Sound.BLOCK_GRINDSTONE_USE, 1.0f, 1.4f);
+    }
+
+    /**
+     * Creates a path region from the waypoints the player has placed, in click order.
+     *
+     * @param session The EditSession for the player.
+     */
+    public void createPathRegion(EditSession session) {
+        final Player player = session.getOwner();
+        final List<Location> points = pathSelections.get(player);
+        if (points == null || points.size() < 2) {
+            player.sendMessage(Component.text("Add at least two waypoints before creating a path region.", NamedTextColor.RED));
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
+            return;
+        }
+
+        final List<Location> snapshot = List.copyOf(points);
+        player.sendMessage(Component.text("Creating path region...", NamedTextColor.YELLOW));
+        guiManager.openRegionCreateGui(session, (name, options) -> {
+            if (!validate(player, name, options)) {
+                return;
+            }
+
+            PathRegion region = new PathRegion(name, snapshot, options);
             session.addRegion(region);
             clearSelections(player);
         }, () -> clearSelections(player));
@@ -360,15 +438,9 @@ public class SelectionHandler {
      * @param region  the region whose tags to edit
      */
     public void openTagEditor(EditSession session, Region region) {
-        Player player = session.getOwner();
-        if (!tagRegistry.hasTags(region.getName())) {
-            player.sendMessage(Component.text("No tags available for ", NamedTextColor.RED)
-                    .append(Component.text("'" + region.getName() + "'", NamedTextColor.DARK_RED))
-                    .append(Component.text(".", NamedTextColor.RED)));
-            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 1.0f, 0.5f);
-            return;
-        }
-        guiManager.openTagEditor(player, region, tagRegistry);
+        // Opened unconditionally: even with no tag registered for this region name the editor is useful,
+        // since it can write a free-form tag and can remove values already applied.
+        guiManager.openTagEditor(session.getOwner(), region, tagRegistry);
     }
 
     private void notifyNoRegion(Player player) {

@@ -17,12 +17,38 @@ public class TagRegistry {
     private final List<Tag> tags = new ArrayList<>();
 
     /**
-     * Registers a tag definition.
+     * Registers tag definitions, skipping any that are already registered.
+     * <p>
+     * The skip makes registration idempotent: a module that rebuilds its tags on every reload can
+     * re-register freely without accumulating duplicates (which would surface as repeated buttons in
+     * the tag editor). {@link Tag} compares by definition rather than identity, so a freshly
+     * constructed but equivalent tag is recognised as already present.
      *
      * @param tags the tags to register
      */
     public void register(Tag... tags) {
-        this.tags.addAll(List.of(tags));
+        for (Tag tag : tags) {
+            if (!this.tags.contains(tag)) {
+                this.tags.add(tag);
+            }
+        }
+    }
+
+    /**
+     * Removes tag definitions. Pass the same definitions that were registered - matching is by
+     * definition, not identity, so the caller does not have to retain the original instances.
+     *
+     * @param tags the tags to remove
+     */
+    public void unregister(Tag... tags) {
+        this.tags.removeAll(List.of(tags));
+    }
+
+    /**
+     * Removes every registered tag definition.
+     */
+    public void clear() {
+        this.tags.clear();
     }
 
     /**

@@ -68,6 +68,10 @@ public class RegionToolListener implements Listener {
             event.setCancelled(true);
             selectionHandler.handleTagEditor(session, event);
         }
+        else if (toolManager.isTool(item, ToolType.PATH_WAND)) {
+            event.setCancelled(true);
+            handlePathWand(event, session);
+        }
     }
 
     /**
@@ -129,6 +133,22 @@ public class RegionToolListener implements Listener {
             selectionHandler.setSecondPosition(session, event);
         } else if (event.getAction() == Action.RIGHT_CLICK_AIR && event.getPlayer().isSneaking()) {
             selectionHandler.createCuboidRegion(session);
+        }
+    }
+
+    /**
+     * Right-click appends a waypoint, left-click undoes the last one, and sneak + right-click finishes
+     * the path. Sneaking is reserved for finishing, so unlike the point tools it does not also mean
+     * "use my standing position" - {@code addPathPoint} falls back to that on its own when a click
+     * yields no interaction point.
+     */
+    private void handlePathWand(PlayerInteractEvent event, EditSession session) {
+        if (event.getAction().isRightClick() && event.getPlayer().isSneaking()) {
+            selectionHandler.createPathRegion(session);
+        } else if (event.getAction().isRightClick()) {
+            selectionHandler.addPathPoint(session, event.getInteractionPoint());
+        } else if (event.getAction().isLeftClick()) {
+            selectionHandler.undoPathPoint(session);
         }
     }
 

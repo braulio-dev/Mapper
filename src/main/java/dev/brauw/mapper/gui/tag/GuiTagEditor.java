@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+
 public class GuiTagEditor extends AbstractPagedGui<Item> {
 
     private final Region region;
@@ -45,13 +46,14 @@ public class GuiTagEditor extends AbstractPagedGui<Item> {
         this.availableTags = tagRegistry.getTags(region.getName());
 
         Structure structure = new Structure(
-                "# # # # # # # # #",
+                "# # # # c # # # #",
                 "# t t t t t t t #",
                 "# t t t t t t t #",
                 "# # # < # > # # #"
         );
 
         structure.addIngredient('t', Markers.CONTENT_LIST_SLOT_HORIZONTAL);
+        structure.addIngredient('c', new CustomTagButton());
         structure.addIngredient('<', new BackItem());
         structure.addIngredient('>', new ForwardItem());
 
@@ -61,9 +63,19 @@ public class GuiTagEditor extends AbstractPagedGui<Item> {
 
     private void updateTagList() {
         Set<String> activeTags = region.getOptions().getTags();
-        List<Item> items = availableTags.stream()
+        List<Item> items = new ArrayList<>(availableTags.stream()
                 .<Item>map(tag -> new TagButton(tag, activeTags))
-                .toList();
+                .toList());
+
+        // Values applied to the region that no definition owns - typed through the custom-tag input, or
+        // left behind by a definition that has since been unregistered. Without these they would be
+        // invisible here and therefore impossible to remove in-game.
+        activeTags.stream()
+                .filter(value -> availableTags.stream().noneMatch(tag -> tag.matches(value)))
+                .sorted()
+                .<Item>map(value -> new CustomTagValueButton(value, activeTags))
+                .forEach(items::add);
+
         setContent(items);
     }
 
@@ -87,6 +99,59 @@ public class GuiTagEditor extends AbstractPagedGui<Item> {
 
         this.pages = pages;
         update();
+    }
+
+    /** Opens the free-form tag input, for tags the registry does not define. */
+    private class CustomTagButton extends AbstractItem {
+
+        @Override
+        public ItemProvider getItemProvider() {
+            return new ItemBuilder(Material.WRITABLE_BOOK)
+                    .setDisplayName(new AdventureComponentWrapper(
+                            Component.text("Custom tag", NamedTextColor.YELLOW)))
+                    .addLoreLines(
+                            new AdventureComponentWrapper(Component.text("tag or tag:value", NamedTextColor.GOLD)),
+                            new AdventureComponentWrapper(Component.text(
+                                    "Write a tag that isn't in the list.", NamedTextColor.GRAY)),
+                            new AdventureComponentWrapper(Component.text("Click to write", NamedTextColor.GREEN)));
+        }
+
+        @Override
+        public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent event) {
+            guiManager.openCustomTagInput(player, region, tagRegistry, region.getOptions().getTags()::add);
+        }
+    }
+
+    /** An applied value with no owning definition; exists so it can still be removed. */
+    private class CustomTagValueButton extends AbstractItem {
+
+        private final String value;
+        private final Set<String> activeTags;
+
+        public CustomTagValueButton(String value, Set<String> activeTags) {
+            this.value = value;
+            this.activeTags = activeTags;
+        }
+
+        @Override
+        public ItemProvider getItemProvider() {
+            return new ItemBuilder(Material.LIME_CONCRETE)
+                    .setDisplayName(new AdventureComponentWrapper(
+                            Component.text("#" + value, NamedTextColor.YELLOW)))
+                    .addLoreLines(
+                            new AdventureComponentWrapper(Component.text("Custom tag", NamedTextColor.GOLD)),
+                            new AdventureComponentWrapper(Component.text(
+                                    "Not defined by any plugin.", NamedTextColor.GRAY)),
+                            new AdventureComponentWrapper(Component.text("Click to remove", NamedTextColor.RED)));
+        }
+
+        @Override
+        public void handleClick(@NotNull ClickType clickType, @NotNull Player player, @NotNull InventoryClickEvent event) {
+            activeTags.remove(value);
+            // Rebuild rather than notify: this button must disappear entirely, not just re-render.
+            updateTagList();
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_PLING, 1.0f, 0.5f);
+        }
     }
 
     private class TagButton extends AbstractItem {

@@ -21,6 +21,7 @@ import java.util.UUID;
         @JsonSubTypes.Type(value = PerspectiveRegion.class, name = "PerspectiveRegion"),
         @JsonSubTypes.Type(value = CuboidRegion.class, name = "CuboidRegion"),
         @JsonSubTypes.Type(value = PolygonRegion.class, name = "PolygonRegion"),
+        @JsonSubTypes.Type(value = PathRegion.class, name = "PathRegion"),
 })
 public interface Region {
 
@@ -103,6 +104,11 @@ public interface Region {
         /**
          * A polygon region.
          */
-        POLYGON
+        POLYGON,
+
+        /**
+         * An ordered sequence of points forming a route.
+         */
+        PATH
     }
 }

@@ -29,6 +29,21 @@ public class PatternTag extends Tag {
     }
 
     /**
+     * Creates a pattern tag offered on whichever regions {@code scope} matches.
+     *
+     * @param name          the display identity of the tag (e.g. {@code order})
+     * @param pattern       the regular expression matched against tag values
+     * @param usage         a short usage hint shown in commands (e.g. {@code order:<number>})
+     * @param description   a human-readable description
+     * @param requiresInput whether selecting this tag prompts for a typed value
+     * @param scope         decides which regions this tag is offered on
+     */
+    public PatternTag(String name, String pattern, String usage, String description, boolean requiresInput, RegionScope scope) {
+        super(name, usage, description, scope, requiresInput);
+        this.pattern = Pattern.compile(pattern);
+    }
+
+    /**
      * Convenience constructor accepting the supported regions as varargs. Pattern
      * tags prompt for a typed value by default, since a concrete value is needed.
      */
@@ -48,5 +63,15 @@ public class PatternTag extends Tag {
         // Anchored match: the whole value must satisfy the pattern, so "level:\d+"
         // owns "level:37" and "level:30" but rejects "level:37x" or "xlevel:30".
         return value != null && pattern.matcher(value).matches();
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        return super.equals(other) && pattern.pattern().equals(((PatternTag) other).pattern.pattern());
+    }
+
+    @Override
+    public int hashCode() {
+        return 31 * super.hashCode() + pattern.pattern().hashCode();
     }
 }

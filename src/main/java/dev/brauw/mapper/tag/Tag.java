@@ -1,7 +1,6 @@
 package dev.brauw.mapper.tag;
 
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -26,11 +25,11 @@ public abstract class Tag {
     private final String name;
     private final String usage;
     private final String description;
-    private final Set<String> supportedRegions;
+    private final RegionScope scope;
     private final boolean requiresInput;
 
     /**
-     * Creates a new tag.
+     * Creates a new tag offered on an explicit set of region names.
      *
      * @param name             the identity of the tag, shown in GUIs and used as
      *                         the stored value for exact tags
@@ -42,10 +41,25 @@ public abstract class Tag {
      *                         toggling its fixed {@link #name() name}
      */
     protected Tag(String name, String usage, String description, Set<String> supportedRegions, boolean requiresInput) {
+        this(name, usage, description, RegionScope.names(supportedRegions), requiresInput);
+    }
+
+    /**
+     * Creates a new tag offered on whichever regions {@code scope} matches. Prefer this over the
+     * name-set form for generic tags, so the tag is registered once per concept rather than once
+     * per region name.
+     *
+     * @param name          the identity of the tag, shown in GUIs and used as the stored value for exact tags
+     * @param usage         a short usage hint shown in commands
+     * @param description   a human-readable description shown in commands and GUIs
+     * @param scope         decides which regions this tag is offered on
+     * @param requiresInput whether selecting this tag prompts the player to type a concrete value
+     */
+    protected Tag(String name, String usage, String description, RegionScope scope, boolean requiresInput) {
         this.name = name;
         this.usage = usage;
         this.description = description;
-        this.supportedRegions = new HashSet<>(supportedRegions);
+        this.scope = scope;
         this.requiresInput = requiresInput;
     }
 
@@ -61,23 +75,29 @@ public abstract class Tag {
     public abstract boolean matches(String value);
 
     /**
-     * Checks whether this tag is offered on the given region.
-     * <p>
-     * Defaults to an exact match against the configured set of supported
-     * regions. Subclasses may override to support pattern-based region matching.
+     * Checks whether this tag is offered on the given region, by asking this tag's
+     * {@link RegionScope}. Subclasses may override for matching the scope cannot express.
      *
      * @param regionName the name of the region to test
      * @return true if this tag supports the region, false otherwise
      */
     public boolean supportsRegion(String regionName) {
-        return supportedRegions.contains(regionName);
+        return scope.matches(regionName);
     }
 
     /**
-     * @return an unmodifiable view of the region names this tag is offered on
+     * @return the scope deciding which regions this tag is offered on
+     */
+    public RegionScope scope() {
+        return scope;
+    }
+
+    /**
+     * @return an unmodifiable view of the region names this tag is offered on. Empty for pattern
+     * and {@link RegionScope#any()} scopes, which match without enumerating.
      */
     public Set<String> supportedRegions() {
-        return Collections.unmodifiableSet(supportedRegions);
+        return scope.names();
     }
 
     /**
@@ -110,5 +130,31 @@ public abstract class Tag {
      */
     public String description() {
         return description;
+    }
+
+    /**
+     * Tags compare by <em>definition</em>, not identity, so registering the same definition twice is
+     * detectable. {@link TagRegistry} relies on this to stay idempotent across module reloads, where
+     * callers rebuild their tags from scratch and would otherwise accumulate duplicates.
+     */
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (other == null || getClass() != other.getClass()) {
+            return false;
+        }
+        final Tag tag = (Tag) other;
+        return requiresInput == tag.requiresInput
+                && Objects.equals(name, tag.name)
+                && Objects.equals(usage, tag.usage)
+                && Objects.equals(description, tag.description)
+                && Objects.equals(scope, tag.scope);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getClass(), name, usage, description, scope, requiresInput);
     }
 }

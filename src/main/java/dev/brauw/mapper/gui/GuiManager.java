@@ -85,6 +85,43 @@ public class GuiManager {
                 .open(player);
     }
 
+    /**
+     * Opens an anvil GUI for the player to type a tag that no {@link Tag} definition covers.
+     * <p>
+     * The registry is the curated, discoverable vocabulary and stays the primary path; this is the
+     * escape hatch for a builder who needs a tag that has not been registered yet, so adding one does
+     * not require a code change and a restart. Input is shape-checked only ({@code key} or
+     * {@code key:value}) - there is no definition to validate against.
+     *
+     * @param player      the editing player
+     * @param region      the region the tag is being applied to
+     * @param tagRegistry the registry, used to rebuild the tag editor
+     * @param onConfirm   consumes the accepted value
+     */
+    public void openCustomTagInput(Player player, Region region, TagRegistry tagRegistry, Consumer<String> onConfirm) {
+        AtomicReference<String> value = new AtomicReference<>("");
+        GuiSet<String> input = new GuiSet<>(value, () -> Material.NAME_TAG,
+                () -> onConfirm.accept(value.get()), GuiManager::isWellFormedTag);
+        AnvilWindow.single()
+                .setGui(input)
+                .addRenameHandler(updated -> {
+                    value.set(updated);
+                    input.update();
+                })
+                .setTitle("Enter tag or tag:value")
+                .addCloseHandler(() -> mapper.getTaskScheduler().scheduleTask(
+                        () -> openTagEditor(player, region, tagRegistry), 1L))
+                .open(player);
+    }
+
+    /**
+     * @return true if {@code value} is a bare marker or a {@code key:value} pair, the two shapes
+     * consumers parse. The value half stays permissive because display names live there.
+     */
+    private static boolean isWellFormedTag(String value) {
+        return value != null && value.matches("[A-Za-z0-9_-]+(:.+)?");
+    }
+
     public void openMetadataEditor(Player player, MapMetadata mapMetadata) {
         Window.single()
                 .setTitle("Map Metadata")

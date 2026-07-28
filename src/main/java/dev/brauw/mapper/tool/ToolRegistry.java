@@ -25,7 +25,8 @@ public class ToolRegistry {
         CUBOID_WAND(2, Material.BLAZE_ROD, "Cuboid Region Wand"),
         POLYGON_WAND(3, Material.BREEZE_ROD, "Polygon Region Wand"),
         REGION_DELETION_TOOL(4, Material.SHEARS, "Region Deletion Tool"),
-        TAG_TOOL(5, Material.NAME_TAG, "Tag Tool");
+        TAG_TOOL(5, Material.NAME_TAG, "Tag Tool"),
+        PATH_WAND(6, Material.LEAD, "Path Region Wand");
 
         @Getter final int slot;
         @Getter final Material material;

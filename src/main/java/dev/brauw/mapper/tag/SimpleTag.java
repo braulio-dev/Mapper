@@ -23,6 +23,18 @@ public class SimpleTag extends Tag {
     }
 
     /**
+     * Creates a simple tag offered on whichever regions {@code scope} matches.
+     *
+     * @param name        the exact value of the tag
+     * @param usage       a short usage hint shown in commands
+     * @param description a human-readable description
+     * @param scope       decides which regions this tag is offered on
+     */
+    public SimpleTag(String name, String usage, String description, RegionScope scope) {
+        super(name, usage, description, scope, false);
+    }
+
+    /**
      * Convenience constructor accepting the supported regions as varargs.
      */
     public SimpleTag(String name, String usage, String description, String... supportedRegions) {

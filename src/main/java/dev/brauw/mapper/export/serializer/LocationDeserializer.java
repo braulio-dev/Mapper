@@ -16,6 +16,9 @@ public class LocationDeserializer extends JsonDeserializer<Location> {
         double x = node.get("x").asDouble();
         double y = node.get("y").asDouble();
         double z = node.get("z").asDouble();
-        return new Location(null, x, y, z, 0, 0);
+        // Absent in files written before rotation was serialized, and omitted when zero.
+        float yaw = node.has("yaw") ? (float) node.get("yaw").asDouble() : 0f;
+        float pitch = node.has("pitch") ? (float) node.get("pitch").asDouble() : 0f;
+        return new Location(null, x, y, z, yaw, pitch);
     }
 }

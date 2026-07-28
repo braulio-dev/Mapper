@@ -4,6 +4,7 @@ import org.mockbukkit.mockbukkit.MockBukkit;
 import org.mockbukkit.mockbukkit.ServerMock;
 import dev.brauw.mapper.export.model.RegionCollection;
 import dev.brauw.mapper.region.CuboidRegion;
+import dev.brauw.mapper.region.PathRegion;
 import dev.brauw.mapper.region.PolygonRegion;
 import dev.brauw.mapper.region.Region;
 import dev.brauw.mapper.region.RegionColor;
@@ -65,6 +66,70 @@ class JsonExportStrategyTest {
         assertEquals(world, loadedPolygon.getWorld());
         assertTrue(loadedPolygon.getChildren().stream()
                 .allMatch(child -> child.getOptions().getColor() == RegionColor.BLUE));
+    }
+
+    @Test
+    void roundTripsPathRegionsInOrder() {
+        server = MockBukkit.mock();
+
+        // World-less locations, and serialize/read rather than export/read, so the assertion does not
+        // depend on a mock world folder being available.
+        PathRegion path = new PathRegion("patrol", List.of(
+                new Location(null, 0, 64, 0, 90f, 0f),
+                new Location(null, 8, 64, 0),
+                new Location(null, 8, 64, 8)
+        ));
+
+        JsonExportStrategy strategy = new JsonExportStrategy();
+        String json = strategy.serialize(List.of(path));
+
+        RegionCollection loaded = strategy.read(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+        assertEquals(1, loaded.size());
+
+        PathRegion loadedPath = assertInstanceOf(PathRegion.class, loaded.getFirst());
+        assertEquals("patrol", loadedPath.getName());
+
+        List<Location> points = loadedPath.getPoints();
+        assertEquals(3, points.size());
+        // Order is the whole point of a path - assert it survives serialization exactly.
+        assertEquals(0, points.get(0).getX());
+        assertEquals(8, points.get(1).getX());
+        assertEquals(8, points.get(2).getZ());
+        assertEquals(90f, points.getFirst().getYaw());
+    }
+
+    @Test
+    void skipsUnknownRegionTypesInsteadOfDiscardingTheFile() {
+        server = MockBukkit.mock();
+
+        // A file written by a newer Mapper: one region type this build knows, one it does not.
+        String json = """
+                [
+                  {
+                    "@ctype": "FutureRegion",
+                    "id": "33333333-3333-3333-3333-333333333333",
+                    "name": "from-the-future",
+                    "options": {}
+                  },
+                  {
+                    "@ctype": "PathRegion",
+                    "id": "44444444-4444-4444-4444-444444444444",
+                    "name": "patrol",
+                    "points": [
+                      { "x": 0.0, "y": 64.0, "z": 0.0 },
+                      { "x": 4.0, "y": 64.0, "z": 0.0 }
+                    ],
+                    "options": {}
+                  }
+                ]
+                """;
+
+        JsonExportStrategy strategy = new JsonExportStrategy();
+        RegionCollection loaded = strategy.read(new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+
+        // The known region survives; only the unreadable one is dropped.
+        assertEquals(1, loaded.size());
+        assertEquals("patrol", assertInstanceOf(PathRegion.class, loaded.getFirst()).getName());
     }
 
     @Test

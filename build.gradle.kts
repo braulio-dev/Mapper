@@ -8,7 +8,7 @@ plugins {
 }
 
 group = "dev.brauw.mapper"
-version = "1.0.17"
+version = "1.0.18"
 
 repositories {
     mavenCentral()
