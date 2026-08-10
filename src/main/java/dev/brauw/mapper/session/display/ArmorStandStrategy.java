@@ -52,7 +52,7 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
 
         final Location location = region.getLocation();
 
-        return displays.computeIfAbsent(region, key -> {
+        return RegionDisplayStrategy.spawnIfAbsent(displays, region, key -> {
             return location.getWorld().spawn(location, ArmorStand.class, spawned -> {
                 spawned.setGlowing(true);
                 spawned.setVisibleByDefault(false);
@@ -137,7 +137,7 @@ public class ArmorStandStrategy implements RegionDisplayStrategy<PointRegion> {
         final Location location = region.getLocation().add(0, 1.5, 0);
         final Color color = region.getOptions().getColor().getBukkitColor();
 
-        return labels.computeIfAbsent(region, key -> location.getWorld().spawn(location, TextDisplay.class, spawned -> {
+        return RegionDisplayStrategy.spawnIfAbsent(labels, region, key -> location.getWorld().spawn(location, TextDisplay.class, spawned -> {
             spawned.text(Component.text(region.getName()).color(TextColor.color(color.getRed(), color.getGreen(), color.getBlue())));
             spawned.setBillboard(Display.Billboard.CENTER);
             spawned.setVisibleByDefault(false);

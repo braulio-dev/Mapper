@@ -137,7 +137,7 @@ public class PathStrategy implements RegionDisplayStrategy<PathRegion> {
         if (existing != null && !existing.stream().allMatch(Entity::isValid)) {
             despawn(parts.remove(region));
         }
-        return parts.computeIfAbsent(region, this::spawnParts);
+        return RegionDisplayStrategy.spawnIfAbsent(parts, region, this::spawnParts);
     }
 
     private List<Entity> spawnParts(PathRegion region) {

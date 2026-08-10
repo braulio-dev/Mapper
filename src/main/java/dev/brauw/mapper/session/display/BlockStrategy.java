@@ -59,7 +59,7 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         final float widthY = (float) Math.abs(max.getY() - min.getY());
         final float widthZ = (float) Math.abs(max.getZ() - min.getZ());
 
-        return displays.computeIfAbsent(region, key -> {
+        return RegionDisplayStrategy.spawnIfAbsent(displays, region, key -> {
             return center.getWorld().spawn(center, BlockDisplay.class, spawned -> {
                 spawned.setGlowing(true);
                 spawned.setVisibleByDefault(false);
@@ -96,7 +96,7 @@ public class BlockStrategy implements RegionDisplayStrategy<CuboidRegion> {
         );
         final Color color = region.getOptions().getColor().getBukkitColor();
 
-        return labels.computeIfAbsent(region, key -> labelLocation.getWorld().spawn(labelLocation, TextDisplay.class, spawned -> {
+        return RegionDisplayStrategy.spawnIfAbsent(labels, region, key -> labelLocation.getWorld().spawn(labelLocation, TextDisplay.class, spawned -> {
             spawned.text(Component.text(region.getName()).color(TextColor.color(color.getRed(), color.getGreen(), color.getBlue())));
             spawned.setBillboard(Display.Billboard.CENTER);
             spawned.setVisibleByDefault(false);

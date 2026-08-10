@@ -63,7 +63,7 @@ public class PolygonStrategy implements RegionDisplayStrategy<PolygonRegion> {
             labels.remove(region);
         }
 
-        return labels.computeIfAbsent(region, key -> labelLocation.getWorld().spawn(labelLocation, TextDisplay.class, spawned -> {
+        return RegionDisplayStrategy.spawnIfAbsent(labels, region, key -> labelLocation.getWorld().spawn(labelLocation, TextDisplay.class, spawned -> {
             spawned.text(Component.text(region.getName()).color(TextColor.color(color.getRed(), color.getGreen(), color.getBlue())));
             spawned.setBillboard(Display.Billboard.CENTER);
             spawned.setVisibleByDefault(false);

@@ -9,6 +9,7 @@ import dev.brauw.mapper.tool.RegionToolManager;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -72,13 +73,26 @@ public class SessionListener implements Listener {
      * so a chunk cycling takes them with it, and a strategy refuses to respawn into a chunk that is
      * not loaded. Without this the repair would wait for the next once-a-second sweep, which is long
      * enough to see a region blink out as you walk back towards it.
+     * <p>
+     * The sweep is deferred a tick rather than run here. Spawning a display entity can itself load
+     * the chunk it is going into, so a synchronous sweep would run <em>inside</em> a strategy's own
+     * spawn call and rearrange the caches that call is midway through writing. A tick later the
+     * spawn has finished and the sweep sees settled state, which is still far inside the second the
+     * repair is racing.
      */
     @EventHandler
     public void onEntitiesLoad(EntitiesLoadEvent event) {
-        final EditSession session = mapper.getSessionManager().getSession(event.getWorld());
-        if (session != null) {
-            mapper.getSessionManager().revalidate(session);
+        final World world = event.getWorld();
+        if (mapper.getSessionManager().getSession(world) == null) {
+            return;
         }
+        // Re-resolved on the tick, since the session can end in between.
+        mapper.getTaskScheduler().scheduleTask(() -> {
+            final EditSession session = mapper.getSessionManager().getSession(world);
+            if (session != null) {
+                mapper.getSessionManager().revalidate(session);
+            }
+        }, 1L);
     }
 
     /**

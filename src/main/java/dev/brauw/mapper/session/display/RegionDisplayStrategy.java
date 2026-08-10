@@ -6,6 +6,9 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.Map;
+import java.util.function.Function;
+
 /**
  * Renders a region to the players editing it.
  * <p>
@@ -58,5 +61,31 @@ public interface RegionDisplayStrategy<T extends Region> {
     static boolean canSpawnAt(@NotNull Location location) {
         final World world = location.getWorld();
         return world != null && world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4);
+    }
+
+    /**
+     * Returns a region's cached display entities, spawning and caching them if it has none.
+     * <p>
+     * Deliberately not {@link java.util.Map#computeIfAbsent}: spawning an entity runs events through
+     * every other listener on the server, and anything that reaches back into a strategy - a chunk
+     * loading, a region being hidden - writes to the very cache the mapping function was called
+     * from. {@code computeIfAbsent} answers that with a {@link java.util.ConcurrentModificationException}.
+     * Spawning outside the map and storing the result afterwards leaves the cache untouched for as
+     * long as the spawn is running, so a reentrant write is merely overwritten rather than fatal.
+     *
+     * @param cache   the strategy's cache of display entities
+     * @param region  the region to spawn for
+     * @param spawner spawns the display entities for a region with none
+     * @return the cached entities, or the freshly spawned ones
+     */
+    static <T extends Region, V> V spawnIfAbsent(@NotNull Map<T, V> cache, @NotNull T region,
+                                                 @NotNull Function<T, V> spawner) {
+        final V existing = cache.get(region);
+        if (existing != null) {
+            return existing;
+        }
+        final V spawned = spawner.apply(region);
+        cache.put(region, spawned);
+        return spawned;
     }
 }
