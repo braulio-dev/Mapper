@@ -26,4 +26,20 @@ public class RegionOptions {
     @Builder.Default
     @NotNull Set<String> tags = new HashSet<>();
 
+    /**
+     * A detached copy, holding its own tag set.
+     * <p>
+     * The tag editor mutates {@link #tags} in place rather than rebuilding the region, so two
+     * regions sharing one options instance would be tagged together. Anything that produces a
+     * second region from an existing one takes a copy so the two can be edited apart.
+     *
+     * @return an equal options with an independent tag set
+     */
+    public RegionOptions copy() {
+        return RegionOptions.builder()
+                .color(color)
+                .tags(new HashSet<>(tags))
+                .build();
+    }
+
 }

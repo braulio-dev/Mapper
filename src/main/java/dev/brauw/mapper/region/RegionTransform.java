@@ -106,6 +106,9 @@ public final class RegionTransform {
      * This is where each region type's structure is handled once, so {@link #translate},
      * {@link #mirror} and {@link #duplicate} are each a one-line choice of mapper and identity
      * rather than five type cases apiece.
+     * <p>
+     * Options are copied rather than carried over: their tag set is mutable and the tag editor
+     * writes to it in place, so a shared instance would tag a duplicate and its source together.
      *
      * @param region the region to rebuild
      * @param id     the id the result should carry
@@ -119,25 +122,25 @@ public final class RegionTransform {
             // one would silently drop the facing that makes it a different type.
             case PerspectiveRegion perspective -> {
                 final Location moved = mapper.apply(perspective.getLocation());
-                yield new PerspectiveRegion(id, name, moved, perspective.getOptions(),
+                yield new PerspectiveRegion(id, name, moved, perspective.getOptions().copy(),
                         moved.getYaw(), moved.getPitch());
             }
             case PointRegion point -> new PointRegion(id, name, mapper.apply(point.getLocation()),
-                    point.getOptions());
+                    point.getOptions().copy());
             case CuboidRegion cuboid -> rebuildCuboid(cuboid, id, name, mapper);
             case PolygonRegion polygon -> {
                 final List<CuboidRegion> children = new ArrayList<>(polygon.getChildren().size());
                 for (CuboidRegion child : polygon.getChildren()) {
                     children.add(rebuildCuboid(child, child.getId(), child.getName(), mapper));
                 }
-                yield new PolygonRegion(id, name, children, polygon.getOptions());
+                yield new PolygonRegion(id, name, children, polygon.getOptions().copy());
             }
             case PathRegion path -> {
                 final List<Location> points = new ArrayList<>(path.size());
                 for (Location point : path.getPoints()) {
                     points.add(mapper.apply(point));
                 }
-                yield new PathRegion(id, name, points, path.getOptions());
+                yield new PathRegion(id, name, points, path.getOptions().copy());
             }
             default -> throw new IllegalArgumentException("Cannot transform " + region.getType());
         };
@@ -160,7 +163,7 @@ public final class RegionTransform {
                 Math.max(first.getX(), second.getX()),
                 Math.max(first.getY(), second.getY()),
                 Math.max(first.getZ(), second.getZ()));
-        return new CuboidRegion(id, name, min, max, cuboid.getOptions());
+        return new CuboidRegion(id, name, min, max, cuboid.getOptions().copy());
     }
 
     /**
